@@ -3,180 +3,167 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NLABS — DNA Generator 9.5 (Retro)</title>
+<title>NLABS — DNA Generator 9.5</title>
 <style>
+  :root{
+    --win-bg:#c0c0c0; --title-bg:#000080; --body-bg:#008080; --card-bg:#ffffff; --edge:#000;
+  }
+  html,body{height:100%}
   body{
-    background:#008080;
+    margin:0; background:var(--body-bg);
     font-family:'MS Sans Serif', Tahoma, Arial, sans-serif;
-    display:flex;align-items:center;justify-content:center;
-    min-height:100vh;margin:0;
+    display:flex; align-items:center; justify-content:center; padding:12px;
   }
-  .window{
-    width:880px;background:#c0c0c0;
-    border:2px solid #fff;box-shadow:2px 2px 0 #000;padding:8px;
-  }
-  .title-bar{
-    background:#000080;color:#fff;font-weight:bold;
-    padding:4px 8px;display:flex;align-items:center;justify-content:space-between
-  }
-  .title-right{display:flex;gap:6px}
-  .title-btn{
-    width:16px;height:16px;background:#c0c0c0;color:#000;
-    border:1px solid #fff;text-align:center;line-height:14px;font-size:12px
-  }
-  .content{background:#fff;border:2px inset #c0c0c0;padding:10px}
+  .window{ width:100%; max-width:820px; background:var(--win-bg);
+    border:2px solid #fff; box-shadow:2px 2px 0 var(--edge); padding:8px; }
+  .title-bar{ background:var(--title-bg); color:#fff; font-weight:bold; font-size:14px;
+    padding:4px 8px; display:flex; align-items:center; justify-content:space-between; }
+  .title-right{display:flex; gap:6px}
+  .title-btn{ width:16px; height:16px; background:#c0c0c0; color:#000; border:1px solid #fff; text-align:center; line-height:14px; font-size:12px }
 
-  /* Tabs */
-  .tabs{display:flex;gap:6px;margin-bottom:8px}
-  .tab{
-    padding:4px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-size:14px
-  }
-  .tab.active{border:2px inset #fff;background:#bdbdbd}
-  .panel{display:none}
-  .panel.active{display:block}
+  .tabbar{display:flex; gap:6px; margin:8px 0 0}
+  .tabbar button{ padding:4px 10px; background:#c0c0c0; border:2px outset #fff; cursor:pointer; font-size:14px }
+  .tabbar button.active{ background:#e7e7e7 }
 
-  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  select,input[type=text]{background:#fff;border:2px inset #fff;padding:4px;font-size:14px}
-  select{min-width:280px}
-  input[type=text]{width:110px}
-  button{
-    padding:4px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;
-    font-size:14px
-  }
-  button:active{border:2px inset #fff}
-  button:disabled{color:#777;cursor:not-allowed;border:2px inset #fff}
-  label{font-size:13px}
-  input[type=range]{vertical-align:middle}
-  .hint{font-size:12px;color:#000080;margin:6px 0}
-  canvas{display:block;border:2px solid #000;background:#eee;margin-top:10px}
-  .status{font-size:13px;margin-top:6px}
-  .pill{
-    padding:2px 6px;background:#ececec;border:1px solid #999;display:inline-block;font-size:12px
-  }
+  .content{ background:var(--card-bg); border:2px inset #c0c0c0; padding:10px; min-height:560px; }
 
-  /* simple text look */
-  .copy{font-size:14px;line-height:1.5}
-  ul{margin-top:6px}
+  /* Controls layout (3 Zeilen im Mint-Tab) */
+  .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .row.compact{ flex-wrap:nowrap }
+  select,input[type=text]{ background:#fff; border:2px inset #fff; padding:4px; font-size:14px }
+  select{ min-width:260px }
+  input[type=text]{ width:110px }
+  label{ font-size:13px; display:flex; align-items:center; gap:6px }
+  input[type=range]{ vertical-align:middle }
+  .btn{ padding:4px 10px; background:#c0c0c0; border:2px outset #fff; cursor:pointer; font-size:14px }
+  .btn:active{ border:2px inset #fff }
+  .btn:disabled{ color:#777; cursor:not-allowed; border:2px inset #fff }
+  .pill{ display:inline-block; padding:2px 6px; border:1px solid #999; background:#ececec; font-size:12px }
+
+  .hint{ font-size:12px; color:#000080; margin:6px 0 }
+  .stage{ display:flex; justify-content:center }
+  canvas{ border:2px solid #000; background:#eee; margin-top:8px; width:100%; max-width:600px; height:auto }
+
+  .status{ font-size:13px; margin-top:6px }
+
+  /* Responsive Tweaks */
+  @media (max-width:520px){
+    .row.compact{ flex-wrap:wrap } /* falls nötig, darf Zeile 1 umbrechen */
+    select{ min-width:200px }
+  }
 </style>
 </head>
 <body>
   <div class="window">
     <div class="title-bar">
-      <div>N-LABS — Retro Suite</div>
-      <div class="title-right">
-        <div class="title-btn">_</div>
-        <div class="title-btn">□</div>
-        <div class="title-btn">X</div>
+      <div>NLABS — DNA Generator</div>
+      <div class="title-right"><div class="title-btn">_</div><div class="title-btn">□</div><div class="title-btn">X</div></div>
+    </div>
+
+    <div class="tabbar">
+      <button class="tabBtn active" data-tab="about">About</button>
+      <button class="tabBtn" data-tab="artists">Artists</button>
+      <button class="tabBtn" data-tab="gallery">Gallery</button>
+      <button class="tabBtn" data-tab="mint">Mint</button>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="content tab-panel" id="tab-about" style="display:block">
+      <h3 style="margin:0 0 8px 0">About NLABS</h3>
+      <p style="margin:6px 0">
+        NLABS ist ein Retro-inspirierter Studio-Space für generative On-chain-Art.
+        Der „DNA Generator“ extrahiert die dominante Farb-DNA eines Referenz-NFTs und
+        erzeugt daraus fließende, mehrschichtige Kompositionen.
+      </p>
+      <p style="margin:6px 0">
+        Tabs oben führen zu Artists, Gallery und zum Mint-Bereich, wo du live generieren kannst.
+      </p>
+    </div>
+
+    <!-- ARTISTS -->
+    <div class="content tab-panel" id="tab-artists" style="display:none">
+      <h3 style="margin:0 0 8px 0">Artists</h3>
+      <ul style="margin:6px 0 0 16px">
+        <li>Monktardio — DNA & Chaos Fragment Algorithmen</li>
+        <li>Guest Slots — kuratierte Drops (tbd)</li>
+      </ul>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="content tab-panel" id="tab-gallery" style="display:none">
+      <h3 style="margin:0 0 8px 0">Gallery (Demo)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px">
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
+        <div style="aspect-ratio:1/1;border:2px solid #000;background:#eee"></div>
       </div>
     </div>
 
-    <div class="content">
-      <!-- Tabs -->
-      <div class="tabs">
-        <div class="tab active" data-tab="about">About</div>
-        <div class="tab" data-tab="artists">Artists</div>
-        <div class="tab" data-tab="gallery">Gallery</div>
-        <div class="tab" data-tab="mint">Mint</div>
+    <!-- MINT -->
+    <div class="content tab-panel" id="tab-mint" style="display:none">
+      <!-- Zeile 1 -->
+      <div class="row compact">
+        <select id="collectionSelect" title="Choose a collection">
+          <option value="boredapeyachtclub|0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d">Bored Ape Yacht Club (BAYC)</option>
+          <option value="mutant-ape-yacht-club|0x60e4d786628fea6478f785a6d7e704777c86a7c6">Mutant Ape Yacht Club (MAYC)</option>
+          <option value="azuki|0xed5af388653567af2f388e6224dc7c4b3241c544">Azuki</option>
+          <option value="doodles-official|0x8a90cab2b38dba80c64b7734e58ee1db38b8992e">Doodles</option>
+          <option value="chimpers|0x80336ad7a747236ef41f47ed2c7641828a480baa">Chimpers</option>
+          <option value="proof-moonbirds|0x23581767a106ae21c074b2276d25e5c3e136a68b">Moonbirds</option>
+          <option value="pudgypenguins|0xbd3531da5cf5857e7cfaa92426877b022e612cf8">Pudgy Penguins</option>
+          <option value="cryptopunks|0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb">CryptoPunks</option>
+          <option value="mocaverse|0x59325733eb952a92e069c87f0a6168b29e80627f">Mocaverse</option>
+          <option value="mfers|0x79fcdef22feed20eddacbb2587640e45491b757f">MFers</option>
+        </select>
+        <input id="tokenIdInput" type="text" placeholder="ID" title="Token ID"/>
+        <button class="btn" id="loadBtn" title="Load NFT">Load NFT</button>
+        <span class="pill" id="nftBadge">No NFT loaded</span>
       </div>
 
-      <!-- About -->
-      <div class="panel active" id="about">
-        <div class="copy">
-          <b>N-LABS</b> ist ein 90s-Retro Mini-App Konzept für generative NFT-Art.
-          Der <b>DNA Generator</b> extrahiert die „Genetik“ (Farben) eines gewählten NFT
-          und komponiert daraus abstrakte Fragmente entlang organischer „Gene Flow“-Pfadlinien.
-          <ul>
-            <li><b>Mutation:</b> Anzahl/Größe der Fragmente</li>
-            <li><b>Gene Flow:</b> Kurvigkeit/Verteilung der Pfade</li>
-            <li><b>Pastell-Background:</b> aus dominanter Originalfarbe abgeleitet</li>
-          </ul>
-          Diese Demo lädt echte NFT-Bilder (Reservoir → OpenSea Fallback) und erzeugt lokale, hochauflösende Downloads beim „Mint (Demo)“ – kein Mainnet-Mint.
-        </div>
+      <!-- Zeile 2 -->
+      <div class="row">
+        <label>Mutation <input type="range" id="mutationRange" min="1" max="10" value="5" /></label>
+        <label>Gene Flow <input type="range" id="flowRange" min="1" max="10" value="6" /></label>
       </div>
 
-      <!-- Artists -->
-      <div class="panel" id="artists">
-        <div class="copy">
-          <b>For Artists</b><br>
-          Stelle deine Werke vor, veröffentliche Drops und präsentiere DNA-basierte Editionen.
-          In der Live-Version gibt es kuratierte Slots, On-Chain Mint, Royalties & Editions.
-        </div>
+      <!-- Zeile 3 -->
+      <div class="row">
+        <button class="btn" id="generateBtn" disabled>Generate</button>
+        <button class="btn" id="mintBtn" disabled>Mint (demo)</button>
       </div>
 
-      <!-- Gallery (Demo-Placeholder) -->
-      <div class="panel" id="gallery">
-        <div class="copy">
-          <b>Gallery (Demo)</b><br>
-          Hier könnten frisch „gemintete“ Werke erscheinen (in der Live-Version via Contract-Events).
-          <ul>
-            <li>DNA-Artwork #001 — BAYC #217</li>
-            <li>DNA-Artwork #002 — Doodles #1234</li>
-            <li>DNA-Artwork #003 — Pudgy #888</li>
-          </ul>
-        </div>
+      <div class="hint">
+        DNA Story: We read your NFT’s dominant palette, derive a very light pastel background from its original hue,
+        then grow layered fragments along organic flow paths. Mutation = amount/scale; Gene Flow = path curvature.
       </div>
 
-      <!-- Mint (DNA Generator 9.4 Logic) -->
-      <div class="panel" id="mint">
-        <!-- Top controls (wie 9.4) -->
-        <div class="row" style="margin-bottom:6px">
-          <select id="collectionSelect" title="Choose a collection">
-            <option value="boredapeyachtclub|0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d">Bored Ape Yacht Club (BAYC)</option>
-            <option value="mutant-ape-yacht-club|0x60e4d786628fea6478f785a6d7e704777c86a7c6">Mutant Ape Yacht Club (MAYC)</option>
-            <option value="azuki|0xed5af388653567af2f388e6224dc7c4b3241c544">Azuki</option>
-            <option value="doodles-official|0x8a90cab2b38dba80c64b7734e58ee1db38b8992e">Doodles</option>
-            <option value="chimpers|0x80336ad7a747236ef41f47ed2c7641828a480baa">Chimpers</option>
-            <option value="proof-moonbirds|0x23581767a106ae21c074b2276d25e5c3e136a68b">Moonbirds</option>
-            <option value="pudgypenguins|0xbd3531da5cf5857e7cfaa92426877b022e612cf8">Pudgy Penguins</option>
-            <option value="cryptopunks|0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb">CryptoPunks</option>
-            <option value="mocaverse|0x59325733eb952a92e069c87f0a6168b29e80627f">Mocaverse</option>
-            <option value="mfers|0x79fcdef22feed20eddacbb2587640e45491b757f">MFers</option>
-          </select>
-
-          <input id="tokenIdInput" type="text" placeholder="Token ID" title="Enter Token ID (e.g. 1234)" />
-          <button id="loadBtn" title="Load NFT image">Load NFT</button>
-
-          <span class="pill" id="nftBadge">No NFT loaded</span>
-
-          <label style="margin-left:auto">Mutation:
-            <input type="range" id="mutationRange" min="1" max="10" value="5" title="Mutation intensity (shapes & density)"/>
-          </label>
-          <label>Gene Flow:
-            <input type="range" id="flowRange" min="1" max="10" value="6" title="Flow paths (organic distribution)"/>
-          </label>
-
-          <button id="generateBtn" disabled title="Generate artwork from NFT DNA">Generate</button>
-          <button id="mintBtn" disabled title="Demo: mint = download high-res">Mint (demo)</button>
-        </div>
-
-        <div class="hint">
-          DNA Story: We read your NFT’s “genetic palette” (dominant colors), set a subtle pastel background from its original hue,
-          then grow layered geometric fragments along organic flow paths. Mutation controls fragment count/size; Gene Flow bends the paths.
-        </div>
-
-        <!-- Single canvas, like 9.4 -->
-        <canvas id="canvas" width="600" height="600"></canvas>
-        <div class="status" id="statusText">Select a collection and enter a Token ID, then click “Load NFT”.</div>
-      </div>
+      <div class="stage"><canvas id="canvas" width="600" height="600"></canvas></div>
+      <div class="status" id="statusText">Select a collection and enter a Token ID, then tap “Load NFT”.</div>
     </div>
   </div>
 
 <script>
 /* ---------- Tabs ---------- */
-const tabs = document.querySelectorAll('.tab');
-const panels = document.querySelectorAll('.panel');
-tabs.forEach(t=>{
-  t.addEventListener('click',()=>{
-    tabs.forEach(x=>x.classList.remove('active'));
-    panels.forEach(p=>p.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById(t.dataset.tab).classList.add('active');
-  })
-});
+const tabBtns=[...document.querySelectorAll('.tabBtn')];
+const panels={
+  about:document.getElementById('tab-about'),
+  artists:document.getElementById('tab-artists'),
+  gallery:document.getElementById('tab-gallery'),
+  mint:document.getElementById('tab-mint')
+};
+tabBtns.forEach(b=>b.addEventListener('click',()=>{
+  tabBtns.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  Object.values(panels).forEach(p=>p.style.display='none');
+  panels[b.dataset.tab].style.display='block';
+}));
 
-/* ---------- UI refs (Mint panel) ---------- */
+/* ---------- Mint (DNA) Logic ---------- */
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const ctx = canvas.getContext('2d',{willReadFrequently:true});
 const collectionSelect = document.getElementById('collectionSelect');
 const tokenIdInput = document.getElementById('tokenIdInput');
 const loadBtn = document.getElementById('loadBtn');
@@ -187,404 +174,183 @@ const flowRange = document.getElementById('flowRange');
 const statusText = document.getElementById('statusText');
 const nftBadge = document.getElementById('nftBadge');
 
-/* ---------- State ---------- */
-let nftImage = null;
-let nftImageData = null;
-let currentSeed = null;
-let bgPastelHex = '#f8f8f8';
-let lastLoadedKey = null;
+let nftImage=null, nftImageData=null, currentSeed=null, bgPastelHex='#f8f8f8', lastLoadedKey=null;
 
-/* ---------- Helpers ---------- */
-function ipfsToHttp(url){
-  if(!url) return null;
-  if(url.startsWith('ipfs://')){
-    return 'https://ipfs.io/ipfs/' + url.replace('ipfs://','');
-  }
-  return url;
-}
-function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+function ipfsToHttp(url){ if(!url) return null; return url.startsWith('ipfs://') ? 'https://ipfs.io/ipfs/'+url.slice(7) : url; }
+function clamp(v,min,max){ return Math.min(max, Math.max(min,v)); }
 
-function rgbToHsl(r,g,b){
-  r/=255; g/=255; b/=255;
-  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+function rgbToHsl(r,g,b){ r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
   let h,s,l=(max+min)/2;
-  if(max===min){ h=s=0; }
-  else{
-    const d=max-min;
+  if(max===min){h=s=0;}else{const d=max-min;
     s=l>0.5? d/(2-max-min): d/(max+min);
-    switch(max){
-      case r: h=(g-b)/d + (g<b?6:0); break;
-      case g: h=(b-r)/d + 2; break;
-      case b: h=(r-g)/d + 4; break;
-    }
-    h/=6;
-  }
-  return [h,s,l];
+    switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;} h/=6;
+  } return [h,s,l];
 }
 function hslToRgb(h,s,l){
   let r,g,b;
-  if(s===0){ r=g=b=l; }
-  else{
-    const hue2rgb=(p,q,t)=>{
-      if(t<0) t+=1;
-      if(t>1) t-=1;
-      if(t<1/6) return p+(q-p)*6*t;
-      if(t<1/2) return q;
-      if(t<2/3) return p+(q-p)*(2/3 - t)*6;
-      return p;
-    };
-    const q=l<0.5? l*(1+s): l+s - l*s;
-    const p=2*l-q;
-    r=hue2rgb(p,q,h+1/3);
-    g=hue2rgb(p,q,h);
-    b=hue2rgb(p,q,h-1/3);
+  if(s===0){r=g=b=l;}else{
+    const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+    const q=l<0.5? l*(1+s): l+s-l*s; const p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
   }
-  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+  return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];
 }
-function rgbToHex(r,g,b){
-  return '#' + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
-}
+function rgbToHex(r,g,b){ return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
 function dominantColorFromImage(img){
-  const t = document.createElement('canvas');
-  const s = 64;
-  t.width=s; t.height=s;
-  const c = t.getContext('2d', { willReadFrequently:true });
-  c.drawImage(img, 0, 0, s, s);
-  const data = c.getImageData(0,0,s,s).data;
-  const map = new Map();
-  const step = 4*2;
-  for(let i=0;i<data.length;i+=step){
-    const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
-    if(a<200) continue;
-    const qr = (r/16|0)*16, qg=(g/16|0)*16, qb=(b/16|0)*16;
-    const key = `${qr},${qg},${qb}`;
-    map.set(key,(map.get(key)||0)+1);
+  const t=document.createElement('canvas'); const s=64; t.width=s; t.height=s;
+  const c=t.getContext('2d',{willReadFrequently:true}); c.drawImage(img,0,0,s,s);
+  const d=c.getImageData(0,0,s,s).data; const map=new Map(); const step=4*2;
+  for(let i=0;i<d.length;i+=step){ const a=d[i+3]; if(a<200) continue;
+    const qr=((d[i]/16)|0)*16, qg=((d[i+1]/16)|0)*16, qb=((d[i+2]/16)|0)*16;
+    const key=`${qr},${qg},${qb}`; map.set(key,(map.get(key)||0)+1);
   }
-  let best=null, bestCount=-1;
-  for(const [k,v] of map.entries()){
-    if(v>bestCount){ best=k; bestCount=v; }
-  }
-  if(!best) return {r:248,g:248,b:248};
-  const [r,g,b] = best.split(',').map(n=>parseInt(n,10));
-  return {r,g,b};
+  let best=null,cnt=-1; for(const [k,v] of map.entries()){ if(v>cnt){best=k;cnt=v;} }
+  if(!best) return {r:248,g:248,b:248}; const [r,g,b]=best.split(',').map(Number); return {r,g,b};
 }
 function pastelizeFromRGB(r,g,b){
-  let [h,s,l] = rgbToHsl(r,g,b);
-  l = clamp(l + 0.08, 0, 1);
-  s = clamp(s - 0.05, 0, 1);
-  const [R,G,B] = hslToRgb(h,s,l);
-  return rgbToHex(R,G,B);
+  let [h,s,l]=rgbToHsl(r,g,b);
+  l=clamp(l+0.10,0,1); s=clamp(s-0.08,0,1);
+  const [R,G,B]=hslToRgb(h,s,l); return rgbToHex(R,G,B);
 }
 
-/* Character Priority 2.0 */
 function getCharacterPriorityColors(imageData, count=15){
-  const colors = {};
-  const step = 12;
-  const d = imageData.data;
+  const colors={}; const step=12; const d=imageData.data;
   for(let i=0;i<d.length;i+=4*step){
     const r=d[i], g=d[i+1], b=d[i+2];
-    const brightness = (r+g+b)/3;
-    const saturation = Math.max(r,g,b) - Math.min(r,g,b);
-    const key = `${r},${g},${b}`;
-    const weight = (saturation*0.6) + (Math.abs(128 - brightness)*0.2) + 10;
-    colors[key] = (colors[key]||0) + weight;
+    const brightness=(r+g+b)/3; const saturation=Math.max(r,g,b)-Math.min(r,g,b);
+    const key=`${r},${g},${b}`; const weight=(saturation*0.6)+(Math.abs(128-brightness)*0.2)+10;
+    colors[key]=(colors[key]||0)+weight;
   }
-  let sorted = Object.entries(colors).sort((a,b)=>b[1]-a[1]);
-  const bgColor = sorted[0]?.[0];
-  sorted = sorted.filter(c=>c[0]!==bgColor);
-  const topColors = sorted.slice(0, count*3);
-  const finalColors = [];
-  let backgroundShare=0;
-  for(const [rgb,weight] of topColors){
-    if(weight<5) continue;
-    if(backgroundShare<2 && finalColors.length<2){
-      finalColors.push(`rgb(${rgb})`);
-      backgroundShare++;
-    }else if(finalColors.length<count){
-      finalColors.push(`rgb(${rgb})`);
-    }
+  let sorted=Object.entries(colors).sort((a,b)=>b[1]-a[1]);
+  const bg=sorted[0]?.[0]; sorted=sorted.filter(c=>c[0]!==bg);
+  const top=sorted.slice(0,count*3); const out=[]; let bgShare=0;
+  for(const [rgb,weight] of top){ if(weight<5) continue;
+    if(bgShare<2 && out.length<2){ out.push(`rgb(${rgb})`); bgShare++; }
+    else if(out.length<count){ out.push(`rgb(${rgb})`); }
   }
-  return finalColors.slice(0,count);
+  return out.slice(0,count);
 }
+function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
 
-/* PRNG */
-function mulberry32(seed){
-  return function(){
-    let t = seed += 0x6D2B79F5;
-    t = Math.imul(t ^ t>>>15, t|1);
-    t ^= t + Math.imul(t ^ t>>>7, t|61);
-    return ((t ^ t>>>14)>>>0) / 4294967296;
-  };
-}
-
-/* Brush patterns */
 const brushPatterns=[];
-function createBrushPatterns(context){
+function createBrushPatterns(ctx){
   brushPatterns.length=0;
-  for(let i=0;i<3;i++){
-    const b=document.createElement('canvas');
-    b.width=40; b.height=40;
-    const bc=b.getContext('2d');
-    bc.fillStyle=`rgba(0,0,0,${0.03+Math.random()*0.05})`;
-    for(let j=0;j<50;j++){
-      const x=Math.random()*40, y=Math.random()*40;
-      bc.fillRect(x,y,1+Math.random()*2, 1+Math.random()*2);
-    }
-    brushPatterns.push(context.createPattern(b,'repeat'));
+  for(let i=0;i<3;i++){ const b=document.createElement('canvas'); b.width=40;b.height=40;
+    const bc=b.getContext('2d'); bc.fillStyle=`rgba(0,0,0,${0.03+Math.random()*0.05})`;
+    for(let j=0;j<50;j++){ const x=Math.random()*40,y=Math.random()*40; bc.fillRect(x,y,1+Math.random()*2,1+Math.random()*2); }
+    brushPatterns.push(ctx.createPattern(b,'repeat'));
   }
 }
-
-/* DNA Fragment (9.4 Core) */
-function chaosFragment(colors, mutation, flowIntensity, context, size, scale, rng){
-  const bigShapes = mutation*2;
-  const midShapes = mutation*8;
-  const smallShapes = mutation*15;
-  const paths = generateFlowPaths(flowIntensity, size, rng);
-  drawShapes(paths, colors, bigShapes, 80,140, context, scale, rng);
-  drawShapes(paths, colors, midShapes, 40, 70, context, scale, rng);
-  drawShapes(paths, colors, smallShapes, 15, 30, context, scale, rng);
-  drawFlowLines(paths, context);
+function chaosFragment(colors, mutation, flow, ctx, size, scale, rng){
+  const big=mutation*2, mid=mutation*8, small=mutation*15;
+  const paths=generateFlowPaths(flow,size,rng);
+  drawShapes(paths,colors,big,80,140,ctx,scale,rng);
+  drawShapes(paths,colors,mid,40,70,ctx,scale,rng);
+  drawShapes(paths,colors,small,15,30,ctx,scale,rng);
+  drawFlowLines(paths,ctx);
 }
-function generateFlowPaths(count,size,rng){
-  const paths=[];
-  for(let i=0;i<count;i++){
-    paths.push([
-      {x:rng()*size, y:rng()*size},
-      {x:rng()*size, y:rng()*size},
-      {x:rng()*size, y:rng()*size}
-    ]);
-  }
-  return paths;
-}
-function bezierPoint(p0,p1,p2,t){
-  const x=(1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x;
-  const y=(1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y;
-  return {x,y};
-}
-function drawShapes(paths, colors, count, minSize, maxSize, context, scale, rng){
-  for(let i=0;i<count;i++){
-    const path = paths[(rng()*paths.length)|0];
-    const t = rng();
-    const p = bezierPoint(path[0],path[1],path[2],t);
-    const size=(minSize + rng()*(maxSize-minSize))*scale;
-    const c1 = colors[(rng()*colors.length)|0];
-    const c2 = colors[(rng()*colors.length)|0];
-    drawShape(p.x,p.y,size,c1,c2,context,rng);
+function generateFlowPaths(n,size,rng){ const p=[]; for(let i=0;i<n;i++){ p.push([{x:rng()*size,y:rng()*size},{x:rng()*size,y:rng()*size},{x:rng()*size,y:rng()*size}]); } return p; }
+function bezierPoint(p0,p1,p2,t){ return {x:(1-t)*(1-t)*p0.x+2*(1-t)*t*p1.x+t*t*p2.x, y:(1-t)*(1-t)*p0.y+2*(1-t)*t*p1.y+t*t*p2.y}; }
+function drawShapes(paths,colors,count,minS,maxS,ctx,scale,rng){
+  for(let i=0;i<count;i++){ const path=paths[(rng()*paths.length)|0]; const t=rng(); const P=bezierPoint(path[0],path[1],path[2],t);
+    const size=(minS+rng()*(maxS-minS))*scale; const c1=colors[(rng()*colors.length)|0]; const c2=colors[(rng()*colors.length)|0];
+    drawShape(P.x,P.y,size,c1,c2,ctx,rng);
   }
 }
-function drawShape(x,y,size,color1,color2,context,rng){
-  context.save();
-  context.translate(x,y);
-  context.rotate(rng()*Math.PI);
-
-  const g=context.createLinearGradient(-size/2,-size/2, size/2,size/2);
-  g.addColorStop(0,color1); g.addColorStop(1,color2);
-  context.fillStyle=g;
-
-  context.shadowColor='rgba(0,0,0,0.15)';
-  context.shadowBlur=10*(size/100);
-  context.shadowOffsetX=5*(size/150);
-  context.shadowOffsetY=5*(size/150);
-
+function drawShape(x,y,size,c1,c2,ctx,rng){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rng()*Math.PI);
+  const g=ctx.createLinearGradient(-size/2,-size/2,size/2,size/2); g.addColorStop(0,c1); g.addColorStop(1,c2); ctx.fillStyle=g;
+  ctx.shadowColor='rgba(0,0,0,0.15)'; ctx.shadowBlur=10*(size/100); ctx.shadowOffsetX=5*(size/150); ctx.shadowOffsetY=5*(size/150);
   const r=rng();
-  if(r<0.2){
-    context.beginPath(); context.arc(0,0,size/2,0,Math.PI*2); context.fill();
-  }else if(r<0.4){
-    context.fillRect(-size/2,-size/2,size,size);
-  }else if(r<0.6){
-    context.beginPath();
-    context.moveTo(-size/2, size/2);
-    context.lineTo(size/2,  size/2);
-    context.lineTo(0,     -size/2);
-    context.closePath(); context.fill();
-  }else if(r<0.8){
-    drawHex(context, size/2);
-  }else{
-    context.fillRect(-size/2, -size/4, size, size/2);
-  }
+  if(r<0.2){ ctx.beginPath(); ctx.arc(0,0,size/2,0,Math.PI*2); ctx.fill(); }
+  else if(r<0.4){ ctx.fillRect(-size/2,-size/2,size,size); }
+  else if(r<0.6){ ctx.beginPath(); ctx.moveTo(-size/2,size/2); ctx.lineTo(size/2,size/2); ctx.lineTo(0,-size/2); ctx.closePath(); ctx.fill(); }
+  else if(r<0.8){ ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i; ctx.lineTo(size/2*Math.cos(a), size/2*Math.sin(a)); } ctx.closePath(); ctx.fill(); }
+  else { ctx.fillRect(-size/2,-size/4,size,size/2); }
+  ctx.globalAlpha=0.8; ctx.fillStyle=brushPatterns[(rng()*brushPatterns.length)|0]; ctx.fillRect(-size/2,-size/2,size,size); ctx.globalAlpha=1;
+  ctx.restore();
+}
+function drawFlowLines(paths,ctx){ ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; for(const p of paths){ ctx.beginPath(); ctx.moveTo(p[0].x,p[0].y); ctx.quadraticCurveTo(p[1].x,p[1].y,p[2].x,p[2].y); ctx.stroke(); } }
+function addNoise(ctx,size){ const d=ctx.getImageData(0,0,size,size); for(let i=0;i<d.data.length;i+=4){ const n=(Math.random()-0.5)*25; d.data[i]+=n; d.data[i+1]+=n; d.data[i+2]+=n; } ctx.putImageData(d,0,0); }
 
-  context.globalAlpha=0.8;
-  context.fillStyle = brushPatterns[(rng()*brushPatterns.length)|0];
-  context.fillRect(-size/2,-size/2,size,size);
-  context.globalAlpha=1;
-
-  context.restore();
-}
-function drawHex(context, radius){
-  context.beginPath();
-  for(let i=0;i<6;i++){
-    const a=(Math.PI/3)*i;
-    context.lineTo(radius*Math.cos(a), radius*Math.sin(a));
-  }
-  context.closePath(); context.fill();
-}
-function drawFlowLines(paths,context){
-  context.strokeStyle='rgba(0,0,0,0.12)';
-  context.lineWidth=1;
-  for(const path of paths){
-    context.beginPath();
-    context.moveTo(path[0].x, path[0].y);
-    context.quadraticCurveTo(path[1].x, path[1].y, path[2].x, path[2].y);
-    context.stroke();
-  }
-}
-function addNoise(context,size){
-  const d = context.getImageData(0,0,size,size);
-  for(let i=0;i<d.data.length;i+=4){
-    const n=(Math.random()-0.5)*25;
-    d.data[i]+=n; d.data[i+1]+=n; d.data[i+2]+=n;
-  }
-  context.putImageData(d,0,0);
-}
-
-/* ---------- Fetch NFT ---------- */
-async function fetchNFTImage(slug, contract, tokenId){
+async function fetchNFTImage(slug,contract,tokenId){
   try{
-    const r = await fetch(`https://api.reservoir.tools/tokens/v7?tokens=${contract}:${tokenId}`);
-    if(r.ok){
-      const j=await r.json();
-      const url = j?.tokens?.[0]?.token?.image || j?.tokens?.[0]?.token?.imageLarge || null;
-      if(url) return ipfsToHttp(url);
-    }
+    const r=await fetch(`https://api.reservoir.tools/tokens/v7?tokens=${contract}:${tokenId}`);
+    if(r.ok){ const j=await r.json(); const url=j?.tokens?.[0]?.token?.image || j?.tokens?.[0]?.token?.imageLarge; if(url) return ipfsToHttp(url); }
   }catch(e){}
-
   try{
-    const r = await fetch(`https://api.opensea.io/api/v2/collection/${slug}/nfts/${tokenId}`);
-    if(r.ok){
-      const j=await r.json();
-      const url = j?.nft?.image_url || j?.nft?.image_original_url || null;
-      if(url) return ipfsToHttp(url);
-    }
+    const r=await fetch(`https://api.opensea.io/api/v2/collection/${slug}/nfts/${tokenId}`);
+    if(r.ok){ const j=await r.json(); const url=j?.nft?.image_url || j?.nft?.image_original_url; if(url) return ipfsToHttp(url); }
   }catch(e){}
   return null;
 }
 
-/* ---------- Local minted blocking (demo) ---------- */
-function mintedKey(slug, tokenId){ return `minted:${slug}:${tokenId}`; }
-function isMinted(slug, tokenId){ return localStorage.getItem(mintedKey(slug,tokenId))==='1'; }
-function markMinted(slug, tokenId){ localStorage.setItem(mintedKey(slug,tokenId),'1'); }
+/* Demo lock */
+function mintedKey(slug,id){return `minted:${slug}:${id}`;}
+function isMinted(slug,id){return localStorage.getItem(mintedKey(slug,id))==='1';}
+function markMinted(slug,id){localStorage.setItem(mintedKey(slug,id),'1');}
 
-/* ---------- Wiring ---------- */
+/* Wiring */
 loadBtn.addEventListener('click', async ()=>{
-  const [slug, contract] = collectionSelect.value.split('|');
-  const tokenId = tokenIdInput.value.trim();
+  const [slug,contract]=collectionSelect.value.split('|');
+  const tokenId=tokenIdInput.value.trim();
   if(!tokenId){ statusText.textContent='Please enter a Token ID.'; return; }
+  if(isMinted(slug,tokenId)){ statusText.textContent='This Token ID has already been minted in the demo. Choose another.'; return; }
 
-  if(isMinted(slug, tokenId)){
-    statusText.textContent='This Token ID has already been minted in the demo. Pick another ID.';
-    return;
-  }
+  statusText.textContent='Loading NFT…'; nftBadge.textContent='Loading…'; generateBtn.disabled=true; mintBtn.disabled=true;
 
-  statusText.textContent='Loading NFT…';
-  nftBadge.textContent='Loading…';
-  generateBtn.disabled = true;
-  mintBtn.disabled = true;
+  const url=await fetchNFTImage(slug,contract,tokenId);
+  if(!url){ statusText.textContent='NFT not found (or blocked by CORS). Try another ID.'; nftBadge.textContent='No NFT loaded'; return; }
 
-  const url = await fetchNFTImage(slug, contract, tokenId);
-  if(!url){
-    statusText.textContent='NFT not found (or blocked by CORS). Try another ID.';
-    nftBadge.textContent='No NFT loaded';
-    return;
-  }
-
-  nftImage = new Image();
-  nftImage.crossOrigin = 'anonymous';
-  nftImage.onload = ()=>{
-    // Background from dominant color (pastel)
-    const dom = dominantColorFromImage(nftImage);
-    bgPastelHex = pastelizeFromRGB(dom.r, dom.g, dom.b);
-
-    // Paint preview like 9.4 (centered NFT on pastel bg)
+  nftImage=new Image(); nftImage.crossOrigin='anonymous';
+  nftImage.onload=()=>{
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = bgPastelHex;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    const cw=canvas.width, ch=canvas.height;
-    const ir = nftImage.width / nftImage.height;
-    let dw=cw, dh=cw/ir;
-    if(dh>ch){ dh=ch; dw=dh*ir; }
-    const dx=(cw-dw)/2, dy=(ch-dh)/2;
-    ctx.drawImage(nftImage, dx, dy, dw, dh);
-
-    nftImageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-
-    statusText.textContent = `Loaded • ${slug} #${tokenId}`;
-    nftBadge.textContent = `${slug} #${tokenId}`;
-    generateBtn.disabled = false;
-    mintBtn.disabled = true;
-    lastLoadedKey = `${slug}|${contract}|${tokenId}`;
+    const dom=dominantColorFromImage(nftImage);
+    bgPastelHex=pastelizeFromRGB(dom.r,dom.g,dom.b);
+    ctx.fillStyle=bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const cw=canvas.width,ch=canvas.height, ir=nftImage.width/nftImage.height;
+    let dw=cw, dh=cw/ir; if(dh>ch){dh=ch; dw=dh*ir;} const dx=(cw-dw)/2, dy=(ch-dh)/2;
+    ctx.drawImage(nftImage,dx,dy,dw,dh);
+    nftImageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    statusText.textContent=`Loaded • ${slug} #${tokenId}`; nftBadge.textContent=`${slug} #${tokenId}`;
+    generateBtn.disabled=false; mintBtn.disabled=true; lastLoadedKey=`${slug}|${contract}|${tokenId}`;
   };
-  nftImage.onerror = ()=>{
-    statusText.textContent='Failed to load image (CORS or broken URL). Try another ID.';
-    nftBadge.textContent='No NFT loaded';
-  };
-  nftImage.src = url;
+  nftImage.onerror=()=>{ statusText.textContent='Failed to load image (CORS or broken URL).'; nftBadge.textContent='No NFT loaded'; };
+  nftImage.src=url;
 });
 
 generateBtn.addEventListener('click', ()=>{
   if(!nftImageData){ alert('Load an NFT first.'); return; }
-
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = bgPastelHex;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
+  ctx.fillStyle=bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
   createBrushPatterns(ctx);
-
-  const colors = getCharacterPriorityColors(nftImageData, 15);
-  const mutation = parseInt(mutationRange.value);
-  const flow = parseInt(flowRange.value);
-
-  currentSeed = Math.floor(Math.random()*1e9);
-  const rng = mulberry32(currentSeed);
-
-  chaosFragment(colors, mutation, flow, ctx, 600, 1, rng);
-  addNoise(ctx, 600);
-
-  statusText.textContent='Generated from NFT DNA • ready to Mint (demo).';
-  mintBtn.disabled = false;
+  const colors=getCharacterPriorityColors(nftImageData,15);
+  const mutation=parseInt(mutationRange.value), flow=parseInt(flowRange.value);
+  currentSeed=Math.floor(Math.random()*1e9); const rng=mulberry32(currentSeed);
+  chaosFragment(colors,mutation,flow,ctx,600,1,rng); addNoise(ctx,600);
+  statusText.textContent='Generated from NFT DNA — ready to Mint (demo).'; mintBtn.disabled=false;
 });
 
 mintBtn.addEventListener('click', ()=>{
   if(!nftImageData || !lastLoadedKey){ alert('Generate first.'); return; }
-
-  const exportSize = 2000;
-  const scale = exportSize / 600;
-  const t = document.createElement('canvas');
-  t.width = exportSize; t.height = exportSize;
-  const tc = t.getContext('2d');
-
-  tc.fillStyle = bgPastelHex;
-  tc.fillRect(0,0,exportSize,exportSize);
-
+  const exportSize=2000, scale=exportSize/600; const t=document.createElement('canvas'); t.width=exportSize; t.height=exportSize;
+  const tc=t.getContext('2d'); tc.fillStyle=bgPastelHex; tc.fillRect(0,0,exportSize,exportSize);
   createBrushPatterns(tc);
-
-  const colors = getCharacterPriorityColors(nftImageData, 15);
-  const mutation = parseInt(mutationRange.value);
-  const flow = parseInt(flowRange.value);
-
-  const rng = mulberry32(currentSeed);
-  chaosFragment(colors, mutation, flow, tc, exportSize, scale, rng);
-  addNoise(tc, exportSize);
-
-  const link = document.createElement('a');
-  link.download = 'nlab-dna-artwork.png';
-  link.href = t.toDataURL('image/png');
-  link.click();
-
-  const [slug] = lastLoadedKey.split('|');
-  const tokenId = tokenIdInput.value.trim();
-  markMinted(slug, tokenId);
-  statusText.textContent = 'Minted (demo) — this Token ID is now blocked locally.';
-  mintBtn.disabled = true;
+  const colors=getCharacterPriorityColors(nftImageData,15);
+  const mutation=parseInt(mutationRange.value), flow=parseInt(flowRange.value);
+  const rng=mulberry32(currentSeed);
+  chaosFragment(colors,mutation,flow,tc,exportSize,scale,rng); addNoise(tc,exportSize);
+  const a=document.createElement('a'); a.download='nlab-dna-artwork.png'; a.href=t.toDataURL('image/png'); a.click();
+  const [slug]=lastLoadedKey.split('|'); const tokenId=tokenIdInput.value.trim(); markMinted(slug,tokenId);
+  statusText.textContent='Minted (demo) — this Token ID is now blocked locally.'; mintBtn.disabled=true;
 });
 
-/* Initial paint */
-(function boot(){
-  ctx.fillStyle = '#f8f8f8';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = '#000';
-  ctx.font = '14px MS Sans Serif';
+/* Boot */
+(function(){
+  ctx.fillStyle='#f8f8f8'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#000'; ctx.font='14px MS Sans Serif';
   ctx.fillText('Load an NFT, then Generate your DNA artwork.', 18, 28);
 })();
 </script>
