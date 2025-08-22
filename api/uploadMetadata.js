@@ -9,25 +9,21 @@ export default async function handler(req) {
     return new Response('Missing WEB3STORAGE_TOKEN', { status: 500 });
   }
   try {
-    const form = await req.formData();
-    const file = form.get('file'); // Blob
-    if (!file) {
-      return new Response(JSON.stringify({ error: 'No file' }), { status: 400, headers: { 'content-type': 'application/json' } });
-    }
+    const meta = await req.json(); // { name, description, image, attributes }
     const up = await fetch('https://api.web3.storage/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': file.type || 'application/octet-stream'
+        'Content-Type': 'application/json'
       },
-      body: file
+      body: JSON.stringify(meta)
     });
     if (!up.ok) {
       const txt = await up.text();
       return new Response(JSON.stringify({ error: txt }), { status: up.status, headers: { 'content-type': 'application/json' }});
     }
     const data = await up.json(); // { cid }
-    return new Response(JSON.stringify({ imageCid: data.cid, imageURI: `ipfs://${data.cid}` }), {
+    return new Response(JSON.stringify({ metadataCid: data.cid, tokenURI: `ipfs://${data.cid}` }), {
       status: 200, headers: { 'content-type': 'application/json' }
     });
   } catch (e) {
