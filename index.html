@@ -282,15 +282,19 @@ genBtn.addEventListener('click', async ()=>{
 
 /* Adaptiv: verkleinert Größe/Qualität, bis < ~4 MB */
 async function autoUploadHighRes(){
-  const targetMaxMB = 3.8;
-  let sizePx = 1600;       // Startgröße
-  let quality = 0.85;      // Startqualität
+  // vorher: const targetMaxMB = 3.8;
+  const targetMaxMB = 2.2; // <= kleineres Ziel, damit Base64 unter Vercel-Limit bleibt
+  let sizePx = 1500;       // vorher 1600 – leicht senken
+  let quality = 0.82;      // vorher 0.85 – leicht senken
 
   while(true){
-    const t=document.createElement('canvas'); t.width=sizePx; t.height=sizePx;
+    const t=document.createElement('canvas'); 
+    t.width=sizePx; t.height=sizePx;
     const tc=t.getContext('2d');
-    // redraw with same seed
-    tc.fillStyle=bgPastelHex; tc.fillRect(0,0,sizePx,sizePx);
+
+    // Render identisch zur Preview (gleiches Seed!)
+    tc.fillStyle=bgPastelHex; 
+    tc.fillRect(0,0,sizePx,sizePx);
     createBrushPatterns(tc);
     const colors=getCharacterPriorityColors(nftImageData,15);
     const mutation=parseInt(mutationRange.value,10);
@@ -300,12 +304,10 @@ async function autoUploadHighRes(){
     addNoise(tc,sizePx);
 
     const dataURL = t.toDataURL('image/jpeg', quality);
-    // prüfe Dateigröße
     const blob = await (await fetch(dataURL)).blob();
     const mb = blob.size/1024/1024;
 
-    if(mb <= targetMaxMB || (sizePx<=1000 && quality<=0.7)){
-      // Upload an /api/upload
+    if(mb <= targetMaxMB || (sizePx<=1000 && quality<=0.70)){
       const [slug] = collectionSelect.value.split('|');
       const id = tokenIdInput.value.trim();
       const name = `NLABS DNA — ${slug} #${id}`;
@@ -316,17 +318,24 @@ async function autoUploadHighRes(){
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ imageDataURL:dataURL, name, description })
       });
-      if(resp.status===413){ throw new Error('Payload too large (413)'); }
-      if(!resp.ok){ throw new Error(await resp.text()); }
+
+      if(!resp.ok){
+        const txt = await resp.text();
+        throw new Error(`Upload error ${resp.status}: ${txt}`);
+      }
       const { tokenURI } = await resp.json();
       return tokenURI;
     }
 
-    // sonst: reduzieren und neu versuchen
-    if(quality > 0.72){ quality -= 0.05; }
-    else { sizePx -= 150; }
+    // aggressiver verkleinern
+    if(quality > 0.74){ 
+      quality -= 0.05;            // 0.82 -> 0.77 -> 0.72
+    } else {
+      sizePx -= 150;              // 1500 -> 1350 -> 1200 -> …
+    }
   }
 }
+
 
 /* ---------- Mint (Demo/Hook) ---------- */
 mintBtn.addEventListener('click', async ()=>{
