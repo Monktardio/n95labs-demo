@@ -1,43 +1,51 @@
 // /api/upload.js
-// Vercel Serverless Function (Node.js)
-// Proxy zu Web3.Storage: nimmt Bild (image/png) oder JSON entgegen
-// und lädt mit deinem WEB3STORAGE_TOKEN sicher auf IPFS.
+import { Web3Storage, File } from 'web3.storage';
 
-// WICHTIG: In Vercel unter Settings > Environment Variables
-// WEB3STORAGE_TOKEN=<dein_token> setzen und neu deployen.
+export const config = {
+  api: { bodyParser: { sizeLimit: '8mb' } } // höheres Limit
+};
 
-export default async function handler(req, res) {
-  try {
-    if (req.method !== 'POST') {
-      res.setHeader('Allow', 'POST');
-      return res.status(405).json({ error: 'Only POST allowed' });
-    }
+function dataURLtoBuffer(dataURL){
+  const base64 = dataURL.split(',')[1];
+  return Buffer.from(base64, 'base64');
+}
+
+export default async function handler(req, res){
+  try{
+    if(req.method!=='POST') return res.status(405).send('Method Not Allowed');
+
+    const { imageDataURL, name, description } = req.body || {};
+    if(!imageDataURL) return res.status(400).send('Missing imageDataURL');
 
     const token = process.env.WEB3STORAGE_TOKEN;
-    if (!token) {
-      return res.status(500).json({ error: 'Missing WEB3STORAGE_TOKEN' });
-    }
+    if(!token) return res.status(500).send('Missing WEB3STORAGE_TOKEN');
 
-    // Body als Buffer lesen (roh, damit wir Blobs/JSON etc. 1:1 weiterreichen)
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const bodyBuffer = Buffer.concat(chunks);
+    const client = new Web3Storage({ token });
 
-    const contentType = req.headers['content-type'] || 'application/octet-stream';
+    // 1) Bild
+    const buf = dataURLtoBuffer(imageDataURL);
+    const imageFile = new File([buf], 'dna.jpg', { type: 'image/jpeg' });
+    const imageCid = await client.put([imageFile], { wrapWithDirectory:false });
+    const imageURI = `ipfs://${imageCid}`;
 
-    const r = await fetch('https://api.web3.storage/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': contentType
-      },
-      body: bodyBuffer
-    });
+    // 2) Metadaten (ERC721)
+    const metadata = {
+      name: name || 'NLABS DNA',
+      description: description || 'On-chain DNA artwork',
+      image: imageURI,
+      attributes: [] // Traits später
+    };
+    const metaBlob = new Blob([JSON.stringify(metadata)], { type:'application/json' });
+    const metaFile = new File([metaBlob], 'metadata.json', { type:'application/json' });
+    const metadataCid = await client.put([metaFile], { wrapWithDirectory:false });
 
-    const text = await r.text();
-    res.status(r.status).send(text);
-  } catch (e) {
+    const tokenURI = `ipfs://${metadataCid}`;
+    return res.status(200).json({ imageCid, metadataCid, tokenURI });
+  }catch(e){
     console.error(e);
-    res.status(500).json({ error: String(e?.message || e) });
+    if(String(e?.message||'').toLowerCase().includes('too large')){
+      return res.status(413).send('Payload too large');
+    }
+    return res.status(500).send(`Upload failed: ${e.message}`);
   }
 }
