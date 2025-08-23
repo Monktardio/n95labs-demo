@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NLABS — DNA Generator 9.5 (Base Sepolia)</title>
+<title>NLABS — DNA Generator 9.5 (Base Sepolia) — Patch B</title>
 <style>
   :root{ --win-bg:#008080; --win-panel:#c0c0c0; --win-blue:#000080; }
   html,body{margin:0;padding:0}
@@ -237,7 +237,7 @@ async function fetchNFTImage(slug, contract, tokenId){
   return null;
 }
 
-/* ========== Color & DNA Algo (aus 9.4) ========= */
+/* ========== Color & DNA Algo ========= */
 function clamp(v,min,max){ return Math.min(max,Math.max(min,v)); }
 function rgbToHsl(r,g,b){
   r/=255; g/=255; b/=255;
@@ -466,8 +466,8 @@ mintBtn.addEventListener('click', async ()=>{
     if(!nftImageData){ alert('Generate first.'); return; }
     await ensureWallet(); await ensureBaseSepolia();
 
-    // High-res Render (2000x2000)
-    const SIZE=2000, scale=SIZE/600;
+    // High-res Render (PATCH B: 1600x1600 + JPEG)
+    const SIZE=1600, scale=SIZE/600;
     const t=document.createElement('canvas'); t.width=SIZE; t.height=SIZE;
     const tc=t.getContext('2d');
     tc.fillStyle=bgPastelHex; tc.fillRect(0,0,SIZE,SIZE);
@@ -477,10 +477,11 @@ mintBtn.addEventListener('click', async ()=>{
     chaosFragment(colors, +mutationRange.value, +flowRange.value, tc, SIZE, scale, rng);
     addNoise(tc, SIZE);
 
-    // Datei bauen
-    const dataURL = t.toDataURL('image/png');
-    const imgBlob = await dataURLtoBlob(dataURL);
-    const imageFile = { name:'dna-art.png', blob:imgBlob };
+    // Datei bauen (JPEG statt PNG)
+    const imgBlob = await new Promise((resolve, reject) => {
+      t.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.92);
+    });
+    const imageFile = { name:'dna-art.jpg', blob:imgBlob };
     // simple metadata
     const [slug] = lastLoadedKey.split('|'); const tokenId = tokenIdInput.value.trim();
     const metadata = {
@@ -498,23 +499,17 @@ mintBtn.addEventListener('click', async ()=>{
     statusText.textContent='Uploading to IPFS…';
     let result;
     if(UPLOAD_MODE==="server"){
-      // server erwartet beides in einem Rutsch -> wir erstellen metadata schon mit Platzhalter
       const metaText = JSON.stringify(metadata, null, 2);
       result = await uploadViaServer([
         imageFile,
         { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
       ]);
-      // Server kann metadata bereits korrekt patchen – falls nicht:
-      if(result.imageUrl && !result.metadataUrl_patched){
-        // no-op; in meiner Beispiel-API werden beide URLs final ausgegeben
-      }
     }else{
-      // client: erst image
       const imgOnly = await uploadViaWeb3Storage([imageFile, {name:'meta-dummy.json', text:'{}', blob:new Blob()}]);
       metadata.image = imgOnly.imageUrl;
       const metaText = JSON.stringify(metadata, null, 2);
       result = await uploadViaWeb3Storage([
-        imageFile, // (wird ignoriert, aber wir lassen Interface gleich)
+        imageFile,
         { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
       ]);
       result.metadataUrl = result.metadataUrl; // ipfs://CID
