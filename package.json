@@ -4,7 +4,6 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "busboy": "^1.6.0",
-    "web3.storage": "^4.5.4"
+    "busboy": "^1.6.0"
   }
 }
