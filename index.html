@@ -39,7 +39,6 @@
   .status{font-size:12px;margin-top:4px;word-break:break-all}
   .coming{padding:18px;background:#efefef;border:2px inset #c0c0c0}
   .footer{font-size:11px;color:#222;margin-top:6px;opacity:.9}
-  /* mobil */
   @media (max-width:560px){
     .row > *{flex:1 1 auto}
     select{min-width:unset}
@@ -58,7 +57,6 @@
       </div>
     </div>
     <div class="content">
-      <!-- Tabs -->
       <div class="tabs">
         <div class="tab active" data-pane="mint">Mint</div>
         <div class="tab" data-pane="gallery">Gallery</div>
@@ -66,9 +64,7 @@
         <div class="tab" data-pane="about">About</div>
       </div>
 
-      <!-- MINT PANE -->
       <div id="pane-mint" class="pane active">
-        <!-- Zeile 1: Collection / ID / Load -->
         <div class="row">
           <select id="collectionSelect" title="Choose a collection">
             <option value="boredapeyachtclub|0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d">Bored Ape Yacht Club (BAYC)</option>
@@ -87,13 +83,11 @@
           <span id="nftBadge" class="badge">No NFT loaded</span>
         </div>
 
-        <!-- Zeile 2: Schieberegler -->
         <div class="row">
           <label>Mutation <input id="mutationRange" type="range" min="1" max="10" value="5"/></label>
           <label>Gene Flow <input id="flowRange" type="range" min="1" max="10" value="6"/></label>
         </div>
 
-        <!-- Zeile 3: Aktionen -->
         <div class="row">
           <button id="generateBtn" disabled>Generate</button>
           <button id="mintBtn" disabled>Mint on Base Sepolia</button>
@@ -108,23 +102,14 @@
         <div class="footer">Chain: Base Sepolia (84532) • Contract: 0x21CFEFfe59d808d9a2D66f8e35bDDb125c491dd6</div>
       </div>
 
-      <!-- GALLERY -->
       <div id="pane-gallery" class="pane">
-        <div class="coming">
-          <b>Gallery</b><br/>
-          <i>Coming soon…</i> (Windows 95 vibes). We’ll showcase freshly minted DNA pieces here, with filters & pastel walls.
-        </div>
+        <div class="coming"><b>Gallery</b><br/><i>Coming soon…</i></div>
       </div>
 
-      <!-- ARTISTS -->
       <div id="pane-artists" class="pane">
-        <div class="coming">
-          <b>Artists</b><br/>
-          <i>Coming soon…</i> Creator profiles, statements, and links. Curated drops will appear here.
-        </div>
+        <div class="coming"><b>Artists</b><br/><i>Coming soon…</i></div>
       </div>
 
-      <!-- ABOUT -->
       <div id="pane-about" class="pane">
         <p><b>NLABS — DNA Suite</b> turns any NFT into a generative “DNA artwork”. Your original’s color genetics guide shapes and flow; outputs are minted on Base.</p>
         <ul style="margin-top:8px">
@@ -137,7 +122,6 @@
   </div>
 </div>
 
-<!-- Ethers v6 -->
 <script type="module">
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.min.js";
 
@@ -145,8 +129,7 @@ import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.m
 const CONTRACT_ADDRESS = "0x21CFEFfe59d808d9a2D66f8e35bDDb125c491dd6";
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 const MINT_PRICE_ETH = "0.0"; // ändere auf z. B. "0.01", falls kostenpflichtig
-// Upload: "server" = ruft /api/upload (Vercel Function) auf, "client" = direkt Web3.Storage im Browser
-const UPLOAD_MODE = "server"; 
+const UPLOAD_MODE = "server";
 const WEB3_STORAGE_TOKEN = ""; // nur nötig, wenn UPLOAD_MODE="client"
 
 /* =============== UI REFS & STATE =============== */
@@ -194,7 +177,7 @@ async function ensureBaseSepolia(){
     await window.ethereum.request({
       method:"wallet_addEthereumChain",
       params:[{
-        chainId: "0x14A34", // 84532
+        chainId: "0x14A34",
         chainName: "Base Sepolia",
         nativeCurrency:{ name:"ETH", symbol:"ETH", decimals:18 },
         rpcUrls:["https://sepolia.base.org"],
@@ -216,7 +199,6 @@ connectBtn.addEventListener('click', async ()=>{
 /* ============== NFT Fetch ============== */
 function ipfsToHttp(u){ return u?.startsWith('ipfs://') ? ('https://ipfs.io/ipfs/'+u.slice(7)) : u }
 async function fetchNFTImage(slug, contract, tokenId){
-  // Try Reservoir
   try{
     const r = await fetch(`https://api.reservoir.tools/tokens/v7?tokens=${contract}:${tokenId}`);
     if(r.ok){
@@ -225,7 +207,6 @@ async function fetchNFTImage(slug, contract, tokenId){
       if(url) return ipfsToHttp(url);
     }
   }catch(e){}
-  // Fallback OpenSea
   try{
     const r = await fetch(`https://api.opensea.io/api/v2/collection/${slug}/nfts/${tokenId}`);
     if(r.ok){
@@ -289,8 +270,8 @@ function dominantColorFromImage(img){
 }
 function pastelizeFromRGB(r,g,b){
   let [h,s,l]=rgbToHsl(r,g,b);
-  l = clamp(l + 0.10, 0, 1);   // etwas heller
-  s = clamp(s - 0.06, 0, 1);   // etwas entsättigt
+  l = clamp(l + 0.10, 0, 1);
+  s = clamp(s - 0.06, 0, 1);
   const [R,G,B]=hslToRgb(h,s,l);
   return rgbToHex(R,G,B);
 }
@@ -381,12 +362,10 @@ loadBtn.addEventListener('click', async ()=>{
 
   nftImage = new Image(); nftImage.crossOrigin='anonymous';
   nftImage.onload = ()=>{
-    // Hintergrund aus dominanter Farbe (pastell)
     const dom = dominantColorFromImage(nftImage);
     bgPastelHex = pastelizeFromRGB(dom.r,dom.g,dom.b);
 
     ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
-    // NFT mitten platzieren (wie 9.4 Preview)
     const cw=canvas.width,ch=canvas.height, ir=nftImage.width/nftImage.height;
     let dw=cw, dh=cw/ir; if(dh>ch){ dh=ch; dw=dh*ir; }
     const dx=(cw-dw)/2, dy=(ch-dh)/2;
@@ -425,13 +404,21 @@ async function uploadViaServer(files){
   const fd = new FormData();
   files.forEach(f => fd.append('file', f.blob, f.name));
   const r = await fetch('/api/upload',{ method:'POST', body:fd });
-  if(!r.ok) throw new Error('Upload API failed');
-  return await r.json(); // { imageCid, imageUrl, metadataCid, metadataUrl }
+
+  // -> Fehlertext sichtbar machen
+  let text = null, payload = null;
+  try { text = await r.text(); } catch {}
+  try { payload = text ? JSON.parse(text) : null; } catch {}
+
+  if(!r.ok){
+    const msg = (payload && (payload.error || payload.message)) || text || `Upload API failed (HTTP ${r.status})`;
+    throw new Error(msg);
+  }
+  return payload || {};
 }
 async function uploadViaWeb3Storage(files){
   if(!WEB3_STORAGE_TOKEN) throw new Error('WEB3_STORAGE_TOKEN missing');
   const endpoint='https://api.web3.storage/upload';
-  // 1) Bild
   const imgRes = await fetch(endpoint,{
     method:'POST',
     headers:{ Authorization:`Bearer ${WEB3_STORAGE_TOKEN}` },
@@ -442,7 +429,6 @@ async function uploadViaWeb3Storage(files){
   const imageCid = (await imgRes.json()).cid;
   const imageUrl = `ipfs://${imageCid}`;
 
-  // 2) Metadata
   const meta = new Blob([files[1].text],{type:'application/json'});
   const metaRes = await fetch(endpoint,{
     method:'POST',
@@ -482,7 +468,6 @@ mintBtn.addEventListener('click', async ()=>{
       t.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.92);
     });
     const imageFile = { name:'dna-art.jpg', blob:imgBlob };
-    // simple metadata
     const [slug] = lastLoadedKey.split('|'); const tokenId = tokenIdInput.value.trim();
     const metadata = {
       name: `NLABS DNA — ${slug} #${tokenId}`,
@@ -495,7 +480,6 @@ mintBtn.addEventListener('click', async ()=>{
       ]
     };
 
-    // erst Bild hochladen, dann metadata.image setzen, dann Metadata hochladen
     statusText.textContent='Uploading to IPFS…';
     let result;
     if(UPLOAD_MODE==="server"){
@@ -512,12 +496,11 @@ mintBtn.addEventListener('click', async ()=>{
         imageFile,
         { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
       ]);
-      result.metadataUrl = result.metadataUrl; // ipfs://CID
+      result.metadataUrl = result.metadataUrl;
     }
     const tokenURI = result.metadataUrl || result.metadataUrl_patched;
     if(!tokenURI) throw new Error('No metadata URL from uploader');
 
-    // Mint
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     const value = ethers.parseEther(MINT_PRICE_ETH);
     const tx = await contract.mint(tokenURI, { value });
