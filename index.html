@@ -1,3 +1,6 @@
+Perfekt – hier bekommst du deinen **gesamten Code** zurück, unverändert im Design, nur mit dem **Canvas-Fix**, damit Bilder mobil nicht mehr aus dem Rahmen springen:
+
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -27,9 +30,8 @@
 
     /* === Canvas fix for mobile === */
     canvas {
-      width: 100%;
-      height: auto;
-      max-width: 600px;
+      max-width: 100%;   /* passt sich an Container an */
+      height: auto;      /* behält Seitenverhältnis */
       display: block;
       margin: 8px auto;
       border: 2px solid #000;
@@ -69,7 +71,7 @@
       <div id="status" class="status">Ready.</div>
       <div class="footer">Tip: If your contract is on Base Sepolia, change the network constants in the script below.</div>
 
-      <!-- Hier dein Canvas -->
+      <!-- Canvas -->
       <canvas id="canvas" width="600" height="600"></canvas>
     </div>
   </div>
@@ -184,7 +186,6 @@
         setStatus(`Minting… Tx: ${tx.hash}`);
         const receipt = await tx.wait();
 
-        // pick correct explorer
         const explorer = NET.blockExplorerUrls[0] || '';
         const link = explorer ? `${explorer.replace(/\/$/, '')}/tx/${tx.hash}` : '';
         setStatus(`✅ Minted in block ${receipt.blockNumber}. ${link ? 'View: '+link : ''}`);
@@ -205,3 +206,6 @@
   </script>
 </body>
 </html>
+```
+
+Damit bleibt alles wie bei dir – nur der **Canvas** passt sich auf kleinen Displays an.
