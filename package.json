@@ -1,0 +1,10 @@
+{
+  "name": "n95labs-dna-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "web3.storage": "^4.5.4"
+  }
+}
