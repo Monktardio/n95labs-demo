@@ -25,14 +25,11 @@
     .footer{margin-top:8px;font-size:11px;opacity:.9}
     .spacer{flex:1}
 
-    /* === Canvas fix for mobile === */
+    /* Fix: Canvas / Bilder bleiben im Rahmen */
     canvas {
-      max-width: 100%;   /* passt sich an Container an */
-      height: auto;      /* behält Seitenverhältnis */
+      max-width: 100%;
+      height: auto;
       display: block;
-      margin: 8px auto;
-      border: 2px solid #000;
-      background: #eee;
     }
   </style>
 </head>
@@ -68,7 +65,7 @@
       <div id="status" class="status">Ready.</div>
       <div class="footer">Tip: If your contract is on Base Sepolia, change the network constants in the script below.</div>
 
-      <!-- Canvas -->
+      <!-- Canvas (falls du eins verwendest) -->
       <canvas id="canvas" width="600" height="600"></canvas>
     </div>
   </div>
