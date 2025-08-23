@@ -1,5 +1,5 @@
 // /api/upload.js — Vercel Serverless Function (Node.js runtime)
-export const config = { runtime: "nodejs18.x" }; // <- zwingt Node, nicht Edge
+export const config = { runtime: "nodejs" }; // <- zwingt Node, nicht Edge
 
 const Busboy = require("busboy");
 const { Web3Storage, File } = require("web3.storage");
@@ -118,3 +118,4 @@ module.exports = async (req, res) => {
     });
   }
 };
+
