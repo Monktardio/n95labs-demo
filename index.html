@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NLABS — DNA Generator 9.5 (Base Sepolia) — Patch B (Fixed)</title>
+<title>NLABS — DNA Generator 9.5 (Base Sepolia)</title>
 <style>
   :root{ --win-bg:#008080; --win-panel:#c0c0c0; --win-blue:#000080; }
   html,body{margin:0;padding:0}
@@ -23,12 +23,12 @@
   .tabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
   .tab{padding:4px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-size:14px}
   .tab.active{border:2px inset #fff;background:#ddd}
-  .pane{display:none}
+  .pane{display:none; min-height:620px;}
   .pane.active{display:block}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
   select,input[type=text]{background:#fff;border:2px inset #fff;padding:4px;font-size:14px}
   select{min-width:210px}
-  input[type=text]{width:110px}
+  input[type=text]{width:120px}
   button{padding:4px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-size:14px}
   button:active{border:2px inset #fff}
   button:disabled{color:#777;cursor:not-allowed;border:2px inset #fff}
@@ -36,12 +36,27 @@
   .hint{font-size:12px;color:#000080;margin:6px 0}
   .badge{font-size:12px;background:#ececec;border:1px solid #999;padding:2px 6px}
   canvas{
-    display:block;border:2px solid #000;background:#eee;margin:8px 0;
-    max-width:100%; height:auto; /* mobile fix */
+    display:block;border:2px solid #000;background:#eee;
+    margin:8px auto;        /* centered horizontally */
+    max-width:100%; height:auto; /* mobile */
   }
   .status{font-size:12px;margin-top:4px;word-break:break-all}
-  .coming{padding:18px;background:#efefef;border:2px inset #c0c0c0}
+  .coming{padding:18px;background:#efefef;border:2px inset #c0c0c0; min-height:620px;}
   .footer{font-size:11px;color:#222;margin-top:6px;opacity:.9}
+
+  /* share bar */
+  .share-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .share-btn{padding:6px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-size:13px}
+  .share-btn:active{border:2px inset #fff}
+
+  /* simple card grid for gallery/artists */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+  .card{background:#f7f7f7;border:2px inset #c0c0c0;padding:10px;cursor:pointer}
+  .card:hover{filter:brightness(0.98)}
+  .card h4{margin:0 0 6px 0;font-size:14px}
+  .card p{margin:0;font-size:12px;color:#333}
+  .note{font-size:12px;color:#333;margin-top:10px}
+
   @media (max-width:560px){
     .row > *{flex:1 1 auto}
     select{min-width:unset}
@@ -54,7 +69,7 @@
     <div class="title-bar">
       <div>NLABS — DNA Suite</div>
       <div class="title-right">
-        <button id="connectBtn" class="title-btn" title="Connect">◎</button>
+        <button id="connectBtn" class="title-btn" title="Connect Wallet">◎</button>
         <div class="title-btn">□</div>
         <div class="title-btn">X</div>
       </div>
@@ -68,9 +83,8 @@
         <div class="tab" data-pane="about">About</div>
       </div>
 
-      <!-- MINT PANE -->
+      <!-- MINT -->
       <div id="pane-mint" class="pane active">
-        <!-- Zeile 1: Collection / ID / Load -->
         <div class="row">
           <select id="collectionSelect" title="Choose a collection">
             <option value="boredapeyachtclub|0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d">Bored Ape Yacht Club (BAYC)</option>
@@ -89,47 +103,92 @@
           <span id="nftBadge" class="badge">No NFT loaded</span>
         </div>
 
-        <!-- Zeile 2: Schieberegler -->
         <div class="row">
-          <label>Mutation <input id="mutationRange" type="range" min="1" max="10" value="5"/></label>
-          <label>Gene Flow <input id="flowRange" type="range" min="1" max="10" value="6"/></label>
+          <label>Sequence <input id="sequenceRange" type="range" min="1" max="10" value="5"/></label>
+          <label>Strand Drift <input id="driftRange" type="range" min="1" max="10" value="6"/></label>
         </div>
 
-        <!-- Zeile 3: Aktionen -->
         <div class="row">
           <button id="generateBtn" disabled>Generate</button>
           <button id="mintBtn" disabled>Mint on Base Sepolia</button>
         </div>
 
         <div class="hint">
-          We read your NFT’s dominant colors, set a subtle pastel background from that hue, then grow layered geometric fragments along organic flow paths. Mutation controls fragment count/size; Gene Flow bends the paths.
+          Every NFT carries a hidden DNA. This app decodes its chromatic sequence and grows new strands from it.
+          <b>Sequence</b> adjusts the density of fragments, while <b>Strand Drift</b> shapes their motion across the canvas.
         </div>
 
         <canvas id="canvas" width="600" height="600"></canvas>
-        <div id="statusText" class="status">Select a collection and enter a Token ID, then click “Load NFT”.</div>
+        <div id="statusText" class="status">Choose a collection and enter a Token ID, then click “Load NFT”.</div>
+
+        <!-- Share bar (appears after mint) -->
+        <div id="shareBar" class="share-bar" style="display:none;">
+          <button id="shareWarpcast" class="share-btn">Share on Farcaster</button>
+          <button id="shareBaseApp" class="share-btn">Share in Base app</button>
+          <button id="shareCopy" class="share-btn">Copy link</button>
+        </div>
+
         <div class="footer">Chain: Base Sepolia (84532) • Contract: <span id="contractAddrFoot"></span></div>
       </div>
 
       <!-- GALLERY -->
       <div id="pane-gallery" class="pane">
-        <div class="coming"><b>Gallery</b><br/><i>Coming soon…</i></div>
+        <div class="coming">
+          <b>Gallery</b><br/><br/>
+          The Gallery will evolve into a shared archive of DNA artworks and collections.
+          Here, collectors can showcase their mints, and artists — from digital painters to photographers —
+          can launch new strands of their work.
+          <div class="grid" id="galleryGrid">
+            <div class="card" data-type="gallery" data-slug="dna-series-01">
+              <h4>DNA Strand — Series 01</h4>
+              <p>Chromatic study from a classic collection.</p>
+            </div>
+            <div class="card" data-type="gallery" data-slug="photo-dna-01">
+              <h4>Photo DNA — Light & Grain</h4>
+              <p>Photographic texture rendered as DNA.</p>
+            </div>
+            <div class="card" data-type="gallery" data-slug="abstract-helix">
+              <h4>Abstract Helix</h4>
+              <p>Fragments, sequence, and drift.</p>
+            </div>
+          </div>
+          <div class="note">Soon: open submissions and artist-curated drops.</div>
+        </div>
       </div>
 
       <!-- ARTISTS -->
       <div id="pane-artists" class="pane">
-        <div class="coming"><b>Artists</b><br/><i>Coming soon…</i></div>
+        <div class="coming">
+          <b>Artists</b><br/><br/>
+          The Artists space will be the heart of NLABS95.
+          A platform where creators introduce themselves, present their vision, and release collections.
+          Not only generative experiments, but also photography and traditional art translated into digital DNA.
+          <div class="grid" id="artistsGrid">
+            <div class="card" data-type="artist" data-slug="lab-collective">
+              <h4>NLABS Collective</h4>
+              <p>Foundational DNA experiments.</p>
+            </div>
+            <div class="card" data-type="artist" data-slug="alice-photo">
+              <h4>Alice (Photography)</h4>
+              <p>Chromatic field studies in grain and light.</p>
+            </div>
+            <div class="card" data-type="artist" data-slug="orbit-studio">
+              <h4>ORBIT Studio</h4>
+              <p>Helix geometry & motion design.</p>
+            </div>
+          </div>
+          <div class="note">Soon: artist pages with profiles, links, and collection launch tools.</div>
+        </div>
       </div>
 
       <!-- ABOUT -->
       <div id="pane-about" class="pane">
-        <p><b>N-Labs95</b> turns the color genetics of your NFTs into generative “DNA artworks”. Everything mints on <b>Base</b> — fast, affordable, open.</p>
-        <ul style="margin-top:8px">
-          <li>Pastel background from dominant NFT color</li>
-          <li><b>Mutation</b> = density & scale</li>
-          <li><b>Gene Flow</b> = number of organic paths</li>
-          <li>One DNA mint per (Collection, TokenID)</li>
-          <li>Max <b>3</b> mints per wallet</li>
-        </ul>
+        <div class="coming">
+          <b>About — NLABS95</b><br/><br/>
+          <i>NLABS95 is more than an app — it’s a DNA laboratory for digital art. We believe every artwork — whether generative, illustrative, or photographic — hides a genetic blueprint waiting to be revealed.</i>
+          <br/><br/>
+          <i>Our vision: NLABS95 will become a central hub for artists and collectors. A place where creativity, technology, and community meet — from minting experimental strands to launching full collections. By decoding artistic DNA, we bring artworks to life in new, unexpected forms.</i>
+        </div>
       </div>
     </div>
   </div>
@@ -140,19 +199,17 @@ import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.m
 
 /* ===================== CONFIG ===================== */
 const RAW_CONTRACT_ADDRESS = "0xeA13E39C6fF7a70fC1Bd4F213D08BA395d336BCB";
-const CONTRACT_ADDRESS = RAW_CONTRACT_ADDRESS.replace(/\s+/g, ""); // ENS-FIX: keine Spaces
+const CONTRACT_ADDRESS = RAW_CONTRACT_ADDRESS.replace(/\s+/g, "");
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
-
 if (!ADDRESS_RE.test(CONTRACT_ADDRESS)) {
   alert("Config error: CONTRACT_ADDRESS is not a valid 0x address.");
   throw new Error("Invalid CONTRACT_ADDRESS");
 }
-
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 const EXPLORER = "https://sepolia.basescan.org";
-const MINT_PRICE_ETH = "0.0";        // muss zu deinem on-chain mintPrice passen
-const UPLOAD_MODE = "server";        // "server" nutzt /api/upload; "client" würde web3.storage erwarten
-const WEB3_STORAGE_TOKEN = "";       // nur für UPLOAD_MODE="client"
+const MINT_PRICE_ETH = "0.0";
+const UPLOAD_MODE = "server";
+const WEB3_STORAGE_TOKEN = "";
 
 document.getElementById('contractAddrFoot').textContent = CONTRACT_ADDRESS;
 
@@ -164,11 +221,16 @@ const tokenIdInput = document.getElementById('tokenIdInput');
 const loadBtn = document.getElementById('loadBtn');
 const generateBtn = document.getElementById('generateBtn');
 const mintBtn = document.getElementById('mintBtn');
-const mutationRange = document.getElementById('mutationRange');
-const flowRange = document.getElementById('flowRange');
+const sequenceRange = document.getElementById('sequenceRange');
+const driftRange = document.getElementById('driftRange');
 const statusText = document.getElementById('statusText');
 const nftBadge = document.getElementById('nftBadge');
 const connectBtn = document.getElementById('connectBtn');
+
+const shareBar = document.getElementById('shareBar');
+const btnWarpcast = document.getElementById('shareWarpcast');
+const btnBaseShare = document.getElementById('shareBaseApp');
+const btnCopy = document.getElementById('shareCopy');
 
 let provider, signer, userAddress;
 let nftImage = null;
@@ -177,6 +239,8 @@ let bgPastelHex = '#f8f8f8';
 let currentSeed = null;
 let lastLoadedKey = null;
 let lastTxHash = null;
+let lastImageGateway = null;
+let lastExplorerTx = null;
 
 /* ================= Tabs ================== */
 document.querySelectorAll('.tab').forEach(t=>{
@@ -190,6 +254,17 @@ document.querySelectorAll('.tab').forEach(t=>{
       if (pane) pane.classList.add('active');
     } catch(e){ console.warn('Tab switch failed:', e); }
   });
+});
+
+/* ======= Simple placeholders for future navigation ======= */
+function showComingSoon(kind, slug){
+  alert(`${kind === 'artist' ? 'Artist profile' : 'Gallery item'} “${slug}” coming soon.`);
+}
+document.querySelectorAll('#artistsGrid .card').forEach(card=>{
+  card.addEventListener('click', ()=> showComingSoon('artist', card.dataset.slug));
+});
+document.querySelectorAll('#galleryGrid .card').forEach(card=>{
+  card.addEventListener('click', ()=> showComingSoon('gallery', card.dataset.slug));
 });
 
 /* ============== Chain Helpers ============== */
@@ -206,7 +281,7 @@ async function ensureBaseSepolia(){
     await window.ethereum.request({
       method:"wallet_addEthereumChain",
       params:[{
-        chainId: "0x14A34", // 84532
+        chainId: "0x14A34",
         chainName: "Base Sepolia",
         nativeCurrency:{ name:"ETH", symbol:"ETH", decimals:18 },
         rpcUrls:["https://sepolia.base.org"],
@@ -230,28 +305,26 @@ connectBtn.addEventListener('click', async ()=>{
 /* ============== NFT Fetch ============== */
 function ipfsToHttp(u){ return u?.startsWith('ipfs://') ? ('https://ipfs.io/ipfs/'+u.slice(7)) : u }
 async function fetchNFTImage(slug, contract, tokenId){
-  // Reservoir zuerst
   try{
     const r = await fetch(`https://api.reservoir.tools/tokens/v7?tokens=${contract}:${tokenId}`);
     if(r.ok){
       const j = await r.json();
       const url = j?.tokens?.[0]?.token?.image || j?.tokens?.[0]?.token?.imageLarge;
       if(url) return ipfsToHttp(url);
-    } else { console.debug('Reservoir HTTP', r.status); }
-  }catch(e){ console.debug('Reservoir error', e); }
-  // OpenSea Fallback
+    }
+  }catch(e){}
   try{
     const r = await fetch(`https://api.opensea.io/api/v2/collection/${slug}/nfts/${tokenId}`);
     if(r.ok){
       const j = await r.json();
       const url = j?.nft?.image_url || j?.nft?.image_original_url;
       if(url) return ipfsToHttp(url);
-    } else { console.debug('OpenSea HTTP', r.status); }
-  }catch(e){ console.debug('OpenSea error', e); }
+    }
+  }catch(e){}
   return null;
 }
 
-/* ======= Color & DNA Algo (wie gehabt, gekürzt auf das Wesentliche) ======= */
+/* ======= Color / DNA Helpers ======= */
 function clamp(v,min,max){ return Math.min(max,Math.max(min,v)); }
 function rgbToHsl(r,g,b){ r/=255; g/=255; b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b); let h,s,l=(max+min)/2;
   if(max===min){ h=s=0; } else { const d=max-min; s=l>0.5? d/(2-max-min): d/(max+min);
@@ -281,13 +354,12 @@ function dominantColorFromImage(img){
 }
 function pastelizeFromRGB(r,g,b){
   let [h,s,l]=rgbToHsl(r,g,b);
-  l = clamp(l + 0.10, 0, 1);
-  s = clamp(s - 0.06, 0, 1);
+  l = clamp(l + 0.10, 0, 1); s = clamp(s - 0.06, 0, 1);
   const [R,G,B]=hslToRgb(h,s,l);
   return rgbToHex(R,G,B);
 }
 
-/* ============== DNA Render (kurz) ============== */
+/* ============== DNA Render (short) ============== */
 function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5;
   t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
 function getCharacterPriorityColors(imageData, count=15){
@@ -347,9 +419,9 @@ function drawShape(x,y,size,c1,c2,context,rng){
 }
 function drawFlowLines(paths,ctx){ ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1;
   for(const p of paths){ ctx.beginPath(); ctx.moveTo(p[0].x,p[0].y); ctx.quadraticCurveTo(p[1].x,p[1].y,p[2].x,p[2].y); ctx.stroke(); } }
-function chaosFragment(colors,mutation,flow,context,size,scale,rng){
-  const big=mutation*2, mid=mutation*8, small=mutation*15;
-  const paths=generateFlowPaths(flow,size,rng);
+function chaosFragment(colors,sequence,drift,context,size,scale,rng){
+  const big=sequence*2, mid=sequence*8, small=sequence*15;
+  const paths=generateFlowPaths(drift,size,rng);
   const draw=(n,a,b)=>{ for(let i=0;i<n;i++){ const path=paths[(rng()*paths.length)|0];
     const t=rng(); const p=bezierPoint(path[0],path[1],path[2],t);
     const s=(a + rng()*(b-a))*scale; const c1=colors[(rng()*colors.length)|0]; const c2=colors[(rng()*colors.length)|0];
@@ -363,119 +435,6 @@ function addNoise(context,size){
 }
 
 /* ============== Duplicate & Cap Checks ============== */
-async function tryDuplicateCheck(){
-  try{
-    if(!signer || !lastLoadedKey) return;
-    const parts = lastLoadedKey.split('|');
-    const sourceCollection = (parts[1] || '').trim();
-    const sourceTokenId = BigInt(tokenIdInput.value.trim() || '0');
-    if (!ADDRESS_RE.test(sourceCollection)) return;
-    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    const already = await c.hasBeenUsed(sourceCollection, sourceTokenId);
-    if (already){
-      statusText.textContent = '⚠️ Already minted from this source. Duplicate blocked on-chain.';
-      mintBtn.disabled = true;
-    }
-  }catch(e){ console.warn('Duplicate check failed:', e); }
-}
-async function refreshMintAllowance(){
-  try{
-    if (!signer) return;
-    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    const left = await c.mintsLeft(await signer.getAddress());
-    statusText.textContent = `Mints left for you: ${left} / 3`;
-    if (Number(left) === 0) mintBtn.disabled = true;
-  }catch{}
-}
-
-/* ============== Load NFT Button ============== */
-loadBtn.addEventListener('click', async ()=>{
-  const [slug,sourceCollectionAddrRaw] = (collectionSelect.value || '').split('|');
-  const sourceCollectionAddr = (sourceCollectionAddrRaw || '').trim();
-  const tokenId = (tokenIdInput.value || '').trim();
-  if(!tokenId){ statusText.textContent='Please enter a Token ID.'; return; }
-  if(!ADDRESS_RE.test(sourceCollectionAddr)){ statusText.textContent='Invalid collection address in dropdown.'; return; }
-
-  statusText.textContent='Loading NFT…';
-  nftBadge.textContent='Loading…'; generateBtn.disabled=true; mintBtn.disabled=true;
-
-  const url = await fetchNFTImage(slug, sourceCollectionAddr, tokenId);
-  if(!url){ statusText.textContent='NFT not found (or blocked by CORS). Try another ID.'; nftBadge.textContent='No NFT loaded'; return; }
-
-  const img = new Image(); img.crossOrigin='anonymous';
-  img.onload = async ()=>{
-    const dom = dominantColorFromImage(img);
-    bgPastelHex = pastelizeFromRGB(dom.r,dom.g,dom.b);
-
-    ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
-    const cw=canvas.width,ch=canvas.height, ir=img.width/img.height;
-    let dw=cw, dh=cw/ir; if(dh>ch){ dh=ch; dw=dh*ir; }
-    const dx=(cw-dw)/2, dy=(ch-dh)/2;
-    ctx.drawImage(img,dx,dy,dw,dh);
-
-    nftImageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    statusText.textContent = `Loaded • ${slug} #${tokenId}`;
-    nftBadge.textContent = `${slug} #${tokenId}`;
-    generateBtn.disabled=false; mintBtn.disabled=true;
-    lastLoadedKey = `${slug}|${sourceCollectionAddr}|${tokenId}`;
-
-    if (signer) { tryDuplicateCheck(); }
-  };
-  img.onerror = ()=>{ statusText.textContent='Failed to load image.'; nftBadge.textContent='No NFT loaded'; };
-  img.src = url;
-});
-
-/* ============== Generate ============== */
-generateBtn.addEventListener('click', ()=>{
-  if(!nftImageData){ alert('Load an NFT first.'); return; }
-  ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
-  createBrushPatterns(ctx);
-  const colors = getCharacterPriorityColors(nftImageData, 15);
-  const mutation = +mutationRange.value, flow = +flowRange.value;
-  currentSeed = Math.floor(Math.random()*1e9);
-  const rng = mulberry32(currentSeed);
-  chaosFragment(colors,mutation,flow,ctx,600,1,rng);
-  addNoise(ctx,600);
-  statusText.textContent='Generated from NFT DNA • ready to Mint.';
-  mintBtn.disabled=false;
-});
-
-/* ============== Upload helper (server/client) ============== */
-async function dataURLtoBlob(dataURL){ const res = await fetch(dataURL); return await res.blob(); }
-
-async function uploadViaServer(files){
-  const fd = new FormData();
-  files.forEach(f => fd.append('file', f.blob, f.name));
-  const r = await fetch('/api/upload',{ method:'POST', body:fd });
-
-  let text = null, payload = null;
-  try { text = await r.text(); } catch {}
-  try { payload = text ? JSON.parse(text) : null; } catch {}
-
-  if(!r.ok){
-    const msg = (payload && (payload.error || payload.message)) || text || `Upload API failed (HTTP ${r.status})`;
-    throw new Error(msg);
-  }
-  return payload || {};
-}
-
-async function uploadViaWeb3Storage(files){
-  if(!WEB3_STORAGE_TOKEN) throw new Error('WEB3_STORAGE_TOKEN missing');
-  const endpoint='https://api.web3.storage/upload';
-  const imgRes = await fetch(endpoint,{ method:'POST', headers:{ Authorization:`Bearer ${WEB3_STORAGE_TOKEN}` }, body: files[0].blob });
-  if(imgRes.status===413) throw new Error('413: image too large');
-  if(!imgRes.ok) throw new Error('image upload failed');
-  const imageCid = (await imgRes.json()).cid;
-  const imageUrl = `ipfs://${imageCid}`;
-  const meta = new Blob([files[1].text],{type:'application/json'});
-  const metaRes = await fetch(endpoint,{ method:'POST', headers:{ Authorization:`Bearer ${WEB3_STORAGE_TOKEN}` }, body: meta });
-  if(!metaRes.ok) throw new Error('metadata upload failed');
-  const metadataCid = (await metaRes.json()).cid;
-  const metadataUrl = `ipfs://${metadataCid}`;
-  return { imageCid, imageUrl, metadataCid, metadataUrl };
-}
-
-/* ============== Contract ABI (Duplicate + Cap) ============== */
 const ABI = [
   {
     "inputs": [
@@ -507,7 +466,116 @@ const ABI = [
   }
 ];
 
-/* ============== Mint Button ============== */
+async function tryDuplicateCheck(){
+  try{
+    if(!signer || !lastLoadedKey) return;
+    const parts = lastLoadedKey.split('|');
+    const sourceCollection = (parts[1] || '').trim();
+    const sourceTokenId = BigInt(tokenIdInput.value.trim() || '0');
+    if (!ADDRESS_RE.test(sourceCollection)) return;
+    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    const already = await c.hasBeenUsed(sourceCollection, sourceTokenId);
+    if (already){
+      statusText.textContent = '⚠️ Already minted from this source. (blocked on-chain)';
+      mintBtn.disabled = true;
+    }
+  }catch(e){ console.warn('Duplicate check failed:', e); }
+}
+async function refreshMintAllowance(){
+  try{
+    if (!signer) return;
+    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    const left = await c.mintsLeft(await signer.getAddress());
+    statusText.textContent = `Mints left for you: ${left} / 3`;
+    if (Number(left) === 0) mintBtn.disabled = true;
+  }catch{}
+}
+
+/* ============== Load NFT Button ============== */
+loadBtn.addEventListener('click', async ()=>{
+  const [slug,sourceCollectionAddrRaw] = (collectionSelect.value || '').split('|');
+  const sourceCollectionAddr = (sourceCollectionAddrRaw || '').trim();
+  const tokenId = (tokenIdInput.value || '').trim();
+  if(!tokenId){ statusText.textContent='Please enter a Token ID.'; return; }
+  if(!ADDRESS_RE.test(sourceCollectionAddr)){ statusText.textContent='Invalid collection address.'; return; }
+
+  statusText.textContent='Loading NFT…';
+  nftBadge.textContent='Loading…'; generateBtn.disabled=true; mintBtn.disabled=true;
+
+  const url = await fetchNFTImage(slug, sourceCollectionAddr, tokenId);
+  if(!url){ statusText.textContent='NFT not found (or CORS blocked).'; nftBadge.textContent='No NFT loaded'; return; }
+
+  const img = new Image(); img.crossOrigin='anonymous';
+  img.onload = async ()=>{
+    const dom = dominantColorFromImage(img);
+    bgPastelHex = pastelizeFromRGB(dom.r,dom.g,dom.b);
+
+    ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const cw=canvas.width,ch=canvas.height, ir=img.width/img.height;
+    let dw=cw, dh=cw/ir; if(dh>ch){ dh=ch; dw=dh*ir; }
+    const dx=(cw-dw)/2, dy=(ch-dh)/2;
+    ctx.drawImage(img,dx,dy,dw,dh);
+
+    nftImageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    statusText.textContent = `Loaded • ${slug} #${tokenId}`;
+    nftBadge.textContent = `${slug} #${tokenId}`;
+    generateBtn.disabled=false; mintBtn.disabled=true;
+    lastLoadedKey = `${slug}|${sourceCollectionAddr}|${tokenId}`;
+
+    if (signer) { tryDuplicateCheck(); }
+  };
+  img.onerror = ()=>{ statusText.textContent='Failed to load image.'; nftBadge.textContent='No NFT loaded'; };
+  img.src = url;
+});
+
+/* ============== Generate ============== */
+generateBtn.addEventListener('click', ()=>{
+  if(!nftImageData){ alert('Load an NFT first.'); return; }
+  ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
+  createBrushPatterns(ctx);
+  const colors = getCharacterPriorityColors(nftImageData, 15);
+  const sequence = +sequenceRange.value, drift = +driftRange.value;
+  currentSeed = Math.floor(Math.random()*1e9);
+  const rng = mulberry32(currentSeed);
+  chaosFragment(colors,sequence,drift,ctx,600,1,rng);
+  addNoise(ctx,600);
+  statusText.textContent='Generated — ready to mint.';
+  mintBtn.disabled=false;
+});
+
+/* ============== Upload helper (server/client) ============== */
+async function uploadViaServer(files){
+  const fd = new FormData();
+  files.forEach(f => fd.append('file', f.blob, f.name));
+  const r = await fetch('/api/upload',{ method:'POST', body:fd });
+
+  let text = null, payload = null;
+  try { text = await r.text(); } catch {}
+  try { payload = text ? JSON.parse(text) : null; } catch {}
+
+  if(!r.ok){
+    const msg = (payload && (payload.error || payload.message)) || text || `Upload API failed (HTTP ${r.status})`;
+    throw new Error(msg);
+  }
+  return payload || {};
+}
+async function uploadViaWeb3Storage(files){
+  if(!WEB3_STORAGE_TOKEN) throw new Error('WEB3_STORAGE_TOKEN missing');
+  const endpoint='https://api.web3.storage/upload';
+  const imgRes = await fetch(endpoint,{ method:'POST', headers:{ Authorization:`Bearer ${WEB3_STORAGE_TOKEN}` }, body: files[0].blob });
+  if(imgRes.status===413) throw new Error('413: image too large');
+  if(!imgRes.ok) throw new Error('image upload failed');
+  const imageCid = (await imgRes.json()).cid;
+  const imageUrl = `ipfs://${imageCid}`;
+  const meta = new Blob([files[1].text],{type:'application/json'});
+  const metaRes = await fetch(endpoint,{ method:'POST', headers:{ Authorization:`Bearer ${WEB3_STORAGE_TOKEN}` }, body: meta });
+  if(!metaRes.ok) throw new Error('metadata upload failed');
+  const metadataCid = (await metaRes.json()).cid;
+  const metadataUrl = `ipfs://${metadataCid}`;
+  return { imageCid, imageUrl, metadataCid, metadataUrl };
+}
+
+/* ============== Mint Button & Share ============== */
 mintBtn.addEventListener('click', async ()=>{
   try{
     if(!nftImageData){ alert('Generate first.'); return; }
@@ -521,7 +589,7 @@ mintBtn.addEventListener('click', async ()=>{
     createBrushPatterns(tc);
     const colors = getCharacterPriorityColors(nftImageData, 15);
     const rng = mulberry32(currentSeed);
-    chaosFragment(colors, +mutationRange.value, +flowRange.value, tc, SIZE, scale, rng);
+    chaosFragment(colors, +sequenceRange.value, +driftRange.value, tc, SIZE, scale, rng);
     addNoise(tc, SIZE);
 
     const imgBlob = await new Promise((resolve, reject) => {
@@ -531,7 +599,7 @@ mintBtn.addEventListener('click', async ()=>{
 
     const [slug, sourceCollectionRaw, sourceTokenIdStr] = (lastLoadedKey || '').split('|');
     const sourceCollection = (sourceCollectionRaw || '').trim();
-    if (!ADDRESS_RE.test(sourceCollection)) throw new Error('Invalid source collection address');
+    if (!ADDRESS_RE.test(sourceCollection)) throw new Error('Invalid collection address');
     const sourceTokenId = BigInt(sourceTokenIdStr || '0');
 
     const metadata = {
@@ -539,8 +607,8 @@ mintBtn.addEventListener('click', async ()=>{
       description: "Generated DNA artwork on Base.",
       image: "ipfs://TBD",
       attributes:[
-        { trait_type:"Mutation", value:+mutationRange.value },
-        { trait_type:"Gene Flow", value:+flowRange.value },
+        { trait_type:"Sequence", value:+sequenceRange.value },
+        { trait_type:"Strand Drift", value:+driftRange.value },
         { trait_type:"Source", value:`${slug} #${sourceTokenId}` }
       ]
     };
@@ -561,17 +629,16 @@ mintBtn.addEventListener('click', async ()=>{
         imageFile,
         { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
       ]);
-      result.metadataUrl = result.metadataUrl;
     }
     const tokenURI = result.metadataUrl || result.metadataUrl_patched || "ipfs://dummy";
-    if(!tokenURI) throw new Error('No metadata URL from uploader');
+    if(!tokenURI) throw new Error('No metadata URL');
+
+    const imageIpfs = result.imageUrl || null;
+    lastImageGateway = imageIpfs ? ipfsToHttp(imageIpfs) : null;
 
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-    // UI-Checks vorab
     const already = await contract.hasBeenUsed(sourceCollection, sourceTokenId);
-    if (already) { statusText.textContent = '⚠️ Already minted from this source.'; mintBtn.disabled = true; return; }
-
+    if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
     const left = await contract.mintsLeft(await signer.getAddress());
     if (Number(left) === 0) { statusText.textContent = '⚠️ Wallet cap reached (3).'; mintBtn.disabled = true; return; }
 
@@ -579,12 +646,14 @@ mintBtn.addEventListener('click', async ()=>{
     const tx = await contract.mint(tokenURI, sourceCollection, sourceTokenId, { value });
     statusText.textContent = `Minting… Tx: ${tx.hash}`;
     const receipt = await tx.wait();
-    lastTxHash = tx.hash;
 
-    const link = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
-    statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${link}`;
+    lastTxHash = tx.hash;
+    lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
+    statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
     mintBtn.disabled=true;
     await refreshMintAllowance();
+
+    shareBar.style.display = 'flex';
 
   }catch(err){
     console.error(err);
@@ -592,11 +661,48 @@ mintBtn.addEventListener('click', async ()=>{
   }
 });
 
+/* ============== Sharing ============== */
+function buildShareText(){
+  const parts = (lastLoadedKey || '').split('|');
+  const slug = parts[0] || 'NFT';
+  const tok = parts[2] || '';
+  return `Just minted a NLABS DNA from ${slug} #${tok} on Base. ⚗️🧬 #Base #NFT`;
+}
+btnWarpcast.addEventListener('click', ()=>{
+  const text = buildShareText();
+  const embeds = [];
+  if (lastImageGateway) embeds.push(lastImageGateway);
+  if (lastExplorerTx) embeds.push(lastExplorerTx);
+  const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}${
+    embeds.map(e => `&embeds[]=${encodeURIComponent(e)}`).join('')
+  }`;
+  window.open(url, '_blank');
+});
+btnBaseShare.addEventListener('click', async ()=>{
+  const text = buildShareText() + (lastExplorerTx ? `\n${lastExplorerTx}` : '');
+  try{
+    if (navigator.share) {
+      await navigator.share({ title: 'My DNA Mint', text, url: lastExplorerTx || undefined });
+    } else {
+      alert('System share not available — use “Copy link” or Farcaster.');
+    }
+  }catch(e){}
+});
+btnCopy.addEventListener('click', async ()=>{
+  try{
+    const text = lastExplorerTx || (lastImageGateway || window.location.href);
+    await navigator.clipboard.writeText(text);
+    statusText.textContent = '🔗 Link copied!';
+  }catch(e){
+    statusText.textContent = 'Could not copy link.';
+  }
+});
+
 /* Boot */
 (function boot(){
   ctx.fillStyle='#f8f8f8'; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle='#000'; ctx.font='14px MS Sans Serif';
-  ctx.fillText('Load an NFT, then Generate your DNA artwork.', 18, 28);
+  ctx.fillText('Load NFT → Generate → Mint → Share.', 18, 28);
 })();
 </script>
 </body>
