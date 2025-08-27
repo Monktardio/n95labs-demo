@@ -37,19 +37,17 @@
   .badge{font-size:12px;background:#ececec;border:1px solid #999;padding:2px 6px}
   canvas{
     display:block;border:2px solid #000;background:#eee;
-    margin:8px auto;        /* centered horizontally */
-    max-width:100%; height:auto; /* mobile */
+    margin:8px auto;              /* center */
+    max-width:100%; height:auto;  /* responsive */
   }
   .status{font-size:12px;margin-top:4px;word-break:break-all}
   .coming{padding:18px;background:#efefef;border:2px inset #c0c0c0; min-height:620px;}
   .footer{font-size:11px;color:#222;margin-top:6px;opacity:.9}
 
-  /* share bar */
   .share-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
   .share-btn{padding:6px 10px;background:#c0c0c0;border:2px outset #fff;cursor:pointer;font-size:13px}
   .share-btn:active{border:2px inset #fff}
 
-  /* simple card grid for gallery/artists */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
   .card{background:#f7f7f7;border:2px inset #c0c0c0;padding:10px;cursor:pointer}
   .card:hover{filter:brightness(0.98)}
@@ -121,7 +119,7 @@
         <canvas id="canvas" width="600" height="600"></canvas>
         <div id="statusText" class="status">Choose a collection and enter a Token ID, then click “Load NFT”.</div>
 
-        <!-- Share bar (appears after mint) -->
+        <!-- Share bar -->
         <div id="shareBar" class="share-bar" style="display:none;">
           <button id="shareWarpcast" class="share-btn">Share on Farcaster</button>
           <button id="shareBaseApp" class="share-btn">Share in Base app</button>
@@ -211,6 +209,13 @@ const MINT_PRICE_ETH = "0.0";
 const UPLOAD_MODE = "server";
 const WEB3_STORAGE_TOKEN = "";
 
+/* ---- DNA render tuning (softer brush/grain) ---- */
+const BRUSH_DOT_ALPHA_MIN = 0.01;   // was ~0.03
+const BRUSH_DOT_ALPHA_MAX = 0.025;  // was ~0.08
+const BRUSH_DOT_COUNT     = 24;     // was 50
+const OVERLAY_ALPHA       = 0.18;   // was ~1.0
+const NOISE_INTENSITY     = 8;      // was 25
+
 document.getElementById('contractAddrFoot').textContent = CONTRACT_ADDRESS;
 
 /* =============== UI REFS & STATE =============== */
@@ -256,7 +261,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-/* ======= Simple placeholders for future navigation ======= */
+/* placeholders for future nav */
 function showComingSoon(kind, slug){
   alert(`${kind === 'artist' ? 'Artist profile' : 'Gallery item'} “${slug}” coming soon.`);
 }
@@ -297,7 +302,6 @@ connectBtn.addEventListener('click', async ()=>{
     const addr = await signer.getAddress();
     connectBtn.textContent = '✓';
     statusText.textContent = `Wallet: ${addr}`;
-    try { await refreshMintAllowance(); } catch {}
     if (lastLoadedKey) { tryDuplicateCheck(); }
   }catch(e){ console.warn(e); }
 });
@@ -333,6 +337,10 @@ function rgbToHsl(r,g,b){ r/=255; g/=255; b/=255; const max=Math.max(r,g,b), min
 function hslToRgb(h,s,l){ let r,g,b; if(s===0){ r=g=b=l; } else {
   const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3 - t)*6; return p; };
   const q=l<0.5? l*(1+s): l+s-l*s, p=2*l-q; r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3); }
+  return [Math.round(r*255),Math.round(b*255),Math.round(g*255)]; } /* (order fixed below) */
+function hslToRgb(h,s,l){ let r,g,b; if(s===0){ r=g=b=l; } else {
+  const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3 - t)*6; return p; };
+  const q=l<0.5? l*(1+s): l+s-l*s, p=2*l-q; r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3); }
   return [Math.round(r*255),Math.round(g*255),Math.round(b*255)]; }
 function rgbToHex(r,g,b){ return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function dominantColorFromImage(img){
@@ -359,9 +367,10 @@ function pastelizeFromRGB(r,g,b){
   return rgbToHex(R,G,B);
 }
 
-/* ============== DNA Render (short) ============== */
+/* ============== DNA Render (soft brush version) ============== */
 function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5;
   t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+
 function getCharacterPriorityColors(imageData, count=15){
   const colors={}, step=12, d=imageData.data;
   for(let i=0;i<d.length;i+=4*step){
@@ -382,16 +391,23 @@ function getCharacterPriorityColors(imageData, count=15){
   }
   return out.slice(0,count);
 }
-const brushPatterns=[];
+
+const brushPatterns = [];
 function createBrushPatterns(context){
-  brushPatterns.length=0;
-  for(let i=0;i<3;i++){
-    const b=document.createElement('canvas'); b.width=40; b.height=40;
-    const bc=b.getContext('2d'); bc.fillStyle=`rgba(0,0,0,${0.03+Math.random()*0.05})`;
-    for(let j=0;j<50;j++){ bc.fillRect(Math.random()*40,Math.random()*40,1+Math.random()*2,1+Math.random()*2); }
-    brushPatterns.push(context.createPattern(b,'repeat'));
+  brushPatterns.length = 0;
+  for (let i = 0; i < 3; i++) {
+    const tile = document.createElement('canvas');
+    tile.width = 40; tile.height = 40;
+    const tctx = tile.getContext('2d');
+    const a = BRUSH_DOT_ALPHA_MIN + Math.random() * (BRUSH_DOT_ALPHA_MAX - BRUSH_DOT_ALPHA_MIN);
+    tctx.fillStyle = `rgba(0,0,0,${a})`;
+    for (let j = 0; j < BRUSH_DOT_COUNT; j++) {
+      tctx.fillRect(Math.random()*40, Math.random()*40, 1 + Math.random()*1.5, 1 + Math.random()*1.5);
+    }
+    brushPatterns.push(context.createPattern(tile, 'repeat'));
   }
 }
+
 function generateFlowPaths(count,size,rng){
   const paths=[]; for(let i=0;i<count;i++){
     paths.push([{x:rng()*size,y:rng()*size},{x:rng()*size,y:rng()*size},{x:rng()*size,y:rng()*size}]);
@@ -406,18 +422,26 @@ function drawShape(x,y,size,c1,c2,context,rng){
   context.save(); context.translate(x,y); context.rotate(rng()*Math.PI);
   const g=context.createLinearGradient(-size/2,-size/2,size/2,size/2);
   g.addColorStop(0,c1); g.addColorStop(1,c2); context.fillStyle=g;
-  context.shadowColor='rgba(0,0,0,0.15)'; context.shadowBlur=10*(size/100);
-  context.shadowOffsetX=5*(size/150); context.shadowOffsetY=5*(size/150);
+  context.shadowColor='rgba(0,0,0,0.12)'; context.shadowBlur=10*(size/100);
+  context.shadowOffsetX=4*(size/150); context.shadowOffsetY=4*(size/150);
   const r=rng();
   if(r<0.2){ context.beginPath(); context.arc(0,0,size/2,0,Math.PI*2); context.fill(); }
   else if(r<0.4){ context.fillRect(-size/2,-size/2,size,size); }
   else if(r<0.6){ context.beginPath(); context.moveTo(-size/2,size/2); context.lineTo(size/2,size/2); context.lineTo(0,-size/2); context.closePath(); context.fill(); }
   else if(r<0.8){ drawHex(context,size/2); }
   else{ context.fillRect(-size/2,-size/4,size,size/2); }
-  context.globalAlpha=0.8; context.fillStyle=brushPatterns[(rng()*brushPatterns.length)|0];
-  context.fillRect(-size/2,-size/2,size,size); context.globalAlpha=1; context.restore();
+
+  // subtle texture overlay
+  const pat = brushPatterns[(rng()*brushPatterns.length)|0];
+  if (pat){
+    context.globalAlpha = OVERLAY_ALPHA;
+    context.fillStyle = pat;
+    context.fillRect(-size/2,-size/2,size,size);
+    context.globalAlpha = 1;
+  }
+  context.restore();
 }
-function drawFlowLines(paths,ctx){ ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1;
+function drawFlowLines(paths,ctx){ ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1;
   for(const p of paths){ ctx.beginPath(); ctx.moveTo(p[0].x,p[0].y); ctx.quadraticCurveTo(p[1].x,p[1].y,p[2].x,p[2].y); ctx.stroke(); } }
 function chaosFragment(colors,sequence,drift,context,size,scale,rng){
   const big=sequence*2, mid=sequence*8, small=sequence*15;
@@ -430,11 +454,16 @@ function chaosFragment(colors,sequence,drift,context,size,scale,rng){
 }
 function addNoise(context,size){
   const d=context.getImageData(0,0,size,size);
-  for(let i=0;i<d.data.length;i+=4){ const n=(Math.random()-0.5)*25; d.data[i]+=n; d.data[i+1]+=n; d.data[i+2]+=n; }
+  for(let i=0;i<d.data.length;i+=4){
+    const n=(Math.random()-0.5)*(NOISE_INTENSITY*2); // ±NOISE_INTENSITY
+    d.data[i]   = Math.max(0, Math.min(255, d.data[i]   + n));
+    d.data[i+1] = Math.max(0, Math.min(255, d.data[i+1] + n));
+    d.data[i+2] = Math.max(0, Math.min(255, d.data[i+2] + n));
+  }
   context.putImageData(d,0,0);
 }
 
-/* ============== Duplicate & Cap Checks ============== */
+/* ============== ABI (duplicate guard only) ============== */
 const ABI = [
   {
     "inputs": [
@@ -456,16 +485,10 @@ const ABI = [
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs":[{ "internalType":"address", "name":"user", "type":"address" }],
-    "name":"mintsLeft",
-    "outputs":[{ "internalType":"uint256", "name":"", "type":"uint256" }],
-    "stateMutability":"view",
-    "type":"function"
   }
 ];
 
+/* ============== Duplicate Check ============== */
 async function tryDuplicateCheck(){
   try{
     if(!signer || !lastLoadedKey) return;
@@ -480,15 +503,6 @@ async function tryDuplicateCheck(){
       mintBtn.disabled = true;
     }
   }catch(e){ console.warn('Duplicate check failed:', e); }
-}
-async function refreshMintAllowance(){
-  try{
-    if (!signer) return;
-    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    const left = await c.mintsLeft(await signer.getAddress());
-    statusText.textContent = `Mints left for you: ${left} / 3`;
-    if (Number(left) === 0) mintBtn.disabled = true;
-  }catch{}
 }
 
 /* ============== Load NFT Button ============== */
@@ -639,8 +653,6 @@ mintBtn.addEventListener('click', async ()=>{
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     const already = await contract.hasBeenUsed(sourceCollection, sourceTokenId);
     if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
-    const left = await contract.mintsLeft(await signer.getAddress());
-    if (Number(left) === 0) { statusText.textContent = '⚠️ Wallet cap reached (3).'; mintBtn.disabled = true; return; }
 
     const value = ethers.parseEther(MINT_PRICE_ETH);
     const tx = await contract.mint(tokenURI, sourceCollection, sourceTokenId, { value });
@@ -651,7 +663,6 @@ mintBtn.addEventListener('click', async ()=>{
     lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
     statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
     mintBtn.disabled=true;
-    await refreshMintAllowance();
 
     shareBar.style.display = 'flex';
 
@@ -661,7 +672,7 @@ mintBtn.addEventListener('click', async ()=>{
   }
 });
 
-/* ============== Sharing ============== */
+/* Sharing */
 function buildShareText(){
   const parts = (lastLoadedKey || '').split('|');
   const slug = parts[0] || 'NFT';
