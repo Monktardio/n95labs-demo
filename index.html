@@ -459,7 +459,14 @@ function addNoise(context,size){
 }
 
 /* ============== Contract ABI (mint w/ source) + duplicate check ============== */
-const ABI = [
+<script type="module">
+// … deine bisherigen Imports & Config bleiben unverändert …
+
+/* ============== ABI: unterstützt beide Varianten ==============
+   A) Extended:  mint(string,address,uint256) + hasBeenUsed(address,uint256)
+   B) Simple:    mint(string)
+*/
+const ABI_EXTENDED = [
   {
     "inputs": [
       { "internalType": "string",  "name": "tokenURI_",        "type": "string"  },
@@ -483,14 +490,33 @@ const ABI = [
   }
 ];
 
+const ABI_SIMPLE = [
+  {
+    "inputs": [{ "internalType": "string", "name": "tokenURI_", "type": "string" }],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+];
+
+// wir instantiieren dynamisch je nach Unterstützung
+let CONTRACT_ABI = ABI_EXTENDED;
+let SUPPORTS_SOURCE = true; // wird geprüft nach Connect
+
+function getContract() {
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+}
+
+/* ===== Duplicate-Check nur, wenn vorhanden ===== */
 async function tryDuplicateCheck(){
   try{
-    if(!signer || !lastLoadedKey) return;
+    if(!signer || !lastLoadedKey || !SUPPORTS_SOURCE) return;
     const parts = lastLoadedKey.split('|');
     const sourceCollection = (parts[1] || '').trim();
     const sourceTokenId = BigInt(tokenIdInput.value.trim() || '0');
     if (!ADDRESS_RE.test(sourceCollection)) return;
-    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    const c = getContract();
     const already = await c.hasBeenUsed(sourceCollection, sourceTokenId);
     if (already){
       statusText.textContent = '⚠️ Already minted from this source. (blocked on-chain)';
@@ -498,6 +524,128 @@ async function tryDuplicateCheck(){
     }
   }catch(e){ console.warn('Duplicate check failed:', e); }
 }
+
+/* ===== Beim Verbinden erkennen, ob hasBeenUsed existiert ===== */
+connectBtn.addEventListener('click', async ()=>{
+  try{
+    await ensureWallet();
+    await ensureBaseSepolia();
+    const addr = await signer.getAddress();
+    connectBtn.textContent = 'Connected';
+    statusText.textContent = `Wallet: ${addr}`;
+
+    // Feature-Detection:
+    try {
+      const test = new ethers.Contract(CONTRACT_ADDRESS, ABI_EXTENDED, signer);
+      // statischer Call, absichtlich mit Dummy-Werten; wenn Funktion nicht existiert -> revert/throw
+      await test.callStatic.hasBeenUsed("0x0000000000000000000000000000000000000000", 0n).catch(()=>{ throw new Error('no-hbu'); });
+      CONTRACT_ABI = ABI_EXTENDED;
+      SUPPORTS_SOURCE = true;
+      console.log('[NLABS95] Extended ABI aktiv (hasBeenUsed vorhanden)');
+    } catch {
+      CONTRACT_ABI = ABI_SIMPLE;
+      SUPPORTS_SOURCE = false;
+      console.log('[NLABS95] Simple ABI aktiv (kein hasBeenUsed / keine Source-Parameter)');
+    }
+
+    if (lastLoadedKey) { tryDuplicateCheck(); }
+  }catch(e){ console.warn(e); }
+});
+
+/* ============== Mint Button (passt sich ABI an) ============== */
+mintBtn.addEventListener('click', async ()=>{
+  try{
+    if(!nftImageData){ alert('Generate first.'); return; }
+    await ensureWallet(); await ensureBaseSepolia();
+
+    // Bild hochskalieren & erzeugen
+    const SIZE=1600, scale=SIZE/600;
+    const t=document.createElement('canvas'); t.width=SIZE; t.height=SIZE;
+    const tc=t.getContext('2d');
+    tc.fillStyle=bgPastelHex; tc.fillRect(0,0,SIZE,SIZE);
+    createBrushPatterns(tc);
+    const colors = getCharacterPriorityColors(nftImageData, 15);
+    const rng = mulberry32(currentSeed);
+    chaosFragment(colors, +sequenceRange.value, +driftRange.value, tc, SIZE, scale, rng);
+    addNoise(tc, SIZE);
+
+    const imgBlob = await new Promise((resolve, reject) => {
+      t.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.92);
+    });
+    const imageFile = { name:'visual-art.jpg', blob:imgBlob };
+
+    const [slug, sourceCollectionRaw, sourceTokenIdStr] = (lastLoadedKey || '').split('|');
+    const sourceCollection = (sourceCollectionRaw || '').trim();
+    const sourceTokenId = BigInt(sourceTokenIdStr || '0');
+
+    const metadata = {
+      name: `N-LABS95 — ${slug || 'Artwork'} #${sourceTokenId}`,
+      description: "Experimental visual minted on Base.",
+      image: "ipfs://TBD",
+      attributes:[
+        { trait_type:"Collection", value: slug || "n/a" },
+        { trait_type:"DNA Frequency", value:+sequenceRange.value },
+        { trait_type:"Gene Flow", value:+driftRange.value },
+        { trait_type:"Source Token", value: String(sourceTokenId) }
+      ]
+    };
+
+    statusText.textContent='Uploading to IPFS…';
+    let result;
+    if(UPLOAD_MODE==="server"){
+      const metaText = JSON.stringify(metadata, null, 2);
+      result = await uploadViaServer([
+        imageFile,
+        { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
+      ]);
+    }else{
+      const imgOnly = await uploadViaWeb3Storage([imageFile, {name:'meta-dummy.json', text:'{}', blob:new Blob()}]);
+      metadata.image = imgOnly.imageUrl;
+      const metaText = JSON.stringify(metadata, null, 2);
+      result = await uploadViaWeb3Storage([
+        imageFile,
+        { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
+      ]);
+    }
+    const tokenURI = result.metadataUrl || result.metadataUrl_patched;
+    if(!tokenURI) throw new Error('No metadata URL from uploader');
+
+    const CONTRACT = getContract();
+
+    // Falls der Contract die Source-Logik NICHT hat: kein Duplicate-Check, und 1-Param-Mint
+    if (!SUPPORTS_SOURCE) {
+      const value = ethers.parseEther(MINT_PRICE_ETH); // ACHTUNG: Falls dein Contract einen Preis > 0 hat → hier den richtigen Wert setzen!
+      const tx = await CONTRACT['mint(string)'](tokenURI, { value });
+      statusText.textContent = `Minting… Tx: ${tx.hash}`;
+      const receipt = await tx.wait();
+      lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
+      statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
+      mintBtn.disabled=true;
+      shareBar.style.display = 'flex';
+      return;
+    }
+
+    // Extended Modus: Duplicate-Check + 3-Param-Mint
+    const already = await CONTRACT.hasBeenUsed(sourceCollection, sourceTokenId);
+    if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
+
+    const value = ethers.parseEther(MINT_PRICE_ETH);
+    const tx = await CONTRACT['mint(string,address,uint256)'](tokenURI, sourceCollection, sourceTokenId, { value });
+    statusText.textContent = `Minting… Tx: ${tx.hash}`;
+    const receipt = await tx.wait();
+    lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
+    statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
+    mintBtn.disabled=true;
+    shareBar.style.display = 'flex';
+
+  }catch(err){
+    console.error(err);
+    // Versuche Revert-Reason sichtbar zu machen
+    const msg = err?.info?.error?.message || err?.reason || err?.shortMessage || err?.message || String(err);
+    statusText.textContent = `❌ Mint failed: ${msg}`;
+  }
+});
+</script>
 
 /* ============== Load NFT Button ============== */
 loadBtn.addEventListener('click', async ()=>{
@@ -825,4 +973,5 @@ document.getElementById('aboutResetBtn').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
+
 
