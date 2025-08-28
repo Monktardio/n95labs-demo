@@ -97,7 +97,7 @@
         <div class="tab" data-pane="mint">Mint</div>
       </div>
 
-      <!-- ABOUT (active + animated retro “lab” DNA screen) -->
+      <!-- ABOUT -->
       <div id="pane-about" class="pane active">
         <div class="about-wrap">
           <div class="crt-frame">
@@ -127,7 +127,7 @@
           Not only generative experiments, but also photography and traditional art translated into digital formats.
           <div class="grid" id="artistsGrid">
             <div class="card" data-type="artist" data-slug="lab-collective">
-              <h4>N-LABS Collective</h4>
+              <h4>N-LABS95 Collective</h4>
               <p>Foundational experiments.</p>
             </div>
             <div class="card" data-type="artist" data-slug="alice-photo">
@@ -232,9 +232,9 @@ if (!ADDRESS_RE.test(CONTRACT_ADDRESS)) {
 }
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 const EXPLORER = "https://sepolia.basescan.org";
-const MINT_PRICE_ETH = "0.0";
-const UPLOAD_MODE = "server";
-const WEB3_STORAGE_TOKEN = "";
+const MINT_PRICE_ETH = "0.0";           // ggf. anpassen
+const UPLOAD_MODE = "server";           // "server" oder "client"
+const WEB3_STORAGE_TOKEN = "";          // nur für UPLOAD_MODE="client"
 
 document.getElementById('contractAddrFoot').textContent = CONTRACT_ADDRESS;
 
@@ -258,38 +258,33 @@ const btnBaseShare = document.getElementById('shareBaseApp');
 const btnCopy = document.getElementById('shareCopy');
 
 let provider, signer, userAddress;
-let nftImage = null;
 let nftImageData = null;
 let bgPastelHex = '#f8f8f8';
 let currentSeed = null;
 let lastLoadedKey = null;
-let lastTxHash = null;
 let lastImageGateway = null;
 let lastExplorerTx = null;
 
 /* ================= Tabs ================== */
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=>{
-    try {
-      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
-      t.classList.add('active');
-      const id = 'pane-'+t.dataset.pane;
-      const pane = document.getElementById(id);
-      if (pane) pane.classList.add('active');
-    } catch(e){ console.warn('Tab switch failed:', e); }
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const pane = document.getElementById('pane-'+t.dataset.pane);
+    if (pane) pane.classList.add('active');
   });
 });
 
-/* ======= Simple placeholders for future navigation ======= */
+/* Placeholder-Klicks */
 function showComingSoon(kind, slug){
   alert(`${kind === 'artist' ? 'Artist profile' : 'Gallery item'} “${slug}” coming soon.`);
 }
 document.querySelectorAll('#artistsGrid .card').forEach(card=>{
-  card.addEventListener('click', ()=> showComingSoon('artist', card.dataset.slug));
+  card?.addEventListener('click', ()=> showComingSoon('artist', card.dataset.slug));
 });
 document.querySelectorAll('#galleryGrid .card').forEach(card=>{
-  card.addEventListener('click', ()=> showComingSoon('gallery', card.dataset.slug));
+  card?.addEventListener('click', ()=> showComingSoon('gallery', card.dataset.slug));
 });
 
 /* ============== Chain Helpers ============== */
@@ -322,11 +317,12 @@ connectBtn.addEventListener('click', async ()=>{
     const addr = await signer.getAddress();
     connectBtn.textContent = 'Connected';
     statusText.textContent = `Wallet: ${addr}`;
-    if (lastLoadedKey) { tryDuplicateCheck(); }
+    await detectContractCapabilities();
+    if (lastLoadedKey && CAPABILITIES.hasBeenUsed) { tryDuplicateCheck(); }
   }catch(e){ console.warn(e); }
 });
 
-/* ============== NFT Fetch ============== */
+/* ============== NFT Load Helpers ============== */
 function ipfsToHttp(u){ return u?.startsWith('ipfs://') ? ('https://ipfs.io/ipfs/'+u.slice(7)) : u }
 async function fetchNFTImage(slug, contract, tokenId){
   try{
@@ -348,7 +344,7 @@ async function fetchNFTImage(slug, contract, tokenId){
   return null;
 }
 
-/* ======= Color / Lab Helpers ======= */
+/* ======= Color helpers ======= */
 function clamp(v,min,max){ return Math.min(max,Math.max(min,v)); }
 function rgbToHsl(r,g,b){ r/=255; g/=255; b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b); let h,s,l=(max+min)/2;
   if(max===min){ h=s=0; } else { const d=max-min; s=l>0.5? d/(2-max-min): d/(max+min);
@@ -383,7 +379,7 @@ function pastelizeFromRGB(r,g,b){
   return rgbToHex(R,G,B);
 }
 
-/* ============== Generator (with brush overlays) ============== */
+/* ============== Generator (mit Pinsel-Overlay) ============== */
 function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5;
   t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
 function getCharacterPriorityColors(imageData, count=15){
@@ -458,14 +454,7 @@ function addNoise(context,size){
   context.putImageData(d,0,0);
 }
 
-/* ============== Contract ABI (mint w/ source) + duplicate check ============== */
-<script type="module">
-// … deine bisherigen Imports & Config bleiben unverändert …
-
-/* ============== ABI: unterstützt beide Varianten ==============
-   A) Extended:  mint(string,address,uint256) + hasBeenUsed(address,uint256)
-   B) Simple:    mint(string)
-*/
+/* ============== Contract ABIs ============== */
 const ABI_EXTENDED = [
   {
     "inputs": [
@@ -492,7 +481,7 @@ const ABI_EXTENDED = [
 
 const ABI_SIMPLE = [
   {
-    "inputs": [{ "internalType": "string", "name": "tokenURI_", "type": "string" }],
+    "inputs": [{ "internalType":"string", "name":"tokenURI_", "type":"string" }],
     "name": "mint",
     "outputs": [],
     "stateMutability": "payable",
@@ -500,154 +489,42 @@ const ABI_SIMPLE = [
   }
 ];
 
-// wir instantiieren dynamisch je nach Unterstützung
-let CONTRACT_ABI = ABI_EXTENDED;
-let SUPPORTS_SOURCE = true; // wird geprüft nach Connect
+const CAPABILITIES = { extended:false, hasBeenUsed:false };
 
-function getContract() {
-  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+async function detectContractCapabilities(){
+  if(!signer) return;
+  try{
+    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI_EXTENDED, signer);
+    // Probe: if function doesn't exist, this call throws
+    await c.hasBeenUsed(ethers.ZeroAddress, 0n);
+    CAPABILITIES.extended = true;
+    CAPABILITIES.hasBeenUsed = true;
+    statusText.textContent = 'Connected • Extended mode (duplicate check enabled).';
+  }catch{
+    CAPABILITIES.extended = false;
+    CAPABILITIES.hasBeenUsed = false;
+    statusText.textContent = 'Connected • Simple mode (no on-chain duplicate check).';
+  }
 }
 
-/* ===== Duplicate-Check nur, wenn vorhanden ===== */
+/* ============== Duplicate check (optional) ============== */
 async function tryDuplicateCheck(){
   try{
-    if(!signer || !lastLoadedKey || !SUPPORTS_SOURCE) return;
+    if(!signer || !lastLoadedKey || !CAPABILITIES.hasBeenUsed) return;
     const parts = lastLoadedKey.split('|');
     const sourceCollection = (parts[1] || '').trim();
-    const sourceTokenId = BigInt(tokenIdInput.value.trim() || '0');
+    const sourceTokenId = BigInt((parts[2] || '0').trim());
     if (!ADDRESS_RE.test(sourceCollection)) return;
-    const c = getContract();
+    const c = new ethers.Contract(CONTRACT_ADDRESS, ABI_EXTENDED, signer);
     const already = await c.hasBeenUsed(sourceCollection, sourceTokenId);
     if (already){
-      statusText.textContent = '⚠️ Already minted from this source. (blocked on-chain)';
+      statusText.textContent = '⚠️ Already minted from this source (blocked on-chain).';
       mintBtn.disabled = true;
     }
   }catch(e){ console.warn('Duplicate check failed:', e); }
 }
 
-/* ===== Beim Verbinden erkennen, ob hasBeenUsed existiert ===== */
-connectBtn.addEventListener('click', async ()=>{
-  try{
-    await ensureWallet();
-    await ensureBaseSepolia();
-    const addr = await signer.getAddress();
-    connectBtn.textContent = 'Connected';
-    statusText.textContent = `Wallet: ${addr}`;
-
-    // Feature-Detection:
-    try {
-      const test = new ethers.Contract(CONTRACT_ADDRESS, ABI_EXTENDED, signer);
-      // statischer Call, absichtlich mit Dummy-Werten; wenn Funktion nicht existiert -> revert/throw
-      await test.callStatic.hasBeenUsed("0x0000000000000000000000000000000000000000", 0n).catch(()=>{ throw new Error('no-hbu'); });
-      CONTRACT_ABI = ABI_EXTENDED;
-      SUPPORTS_SOURCE = true;
-      console.log('[NLABS95] Extended ABI aktiv (hasBeenUsed vorhanden)');
-    } catch {
-      CONTRACT_ABI = ABI_SIMPLE;
-      SUPPORTS_SOURCE = false;
-      console.log('[NLABS95] Simple ABI aktiv (kein hasBeenUsed / keine Source-Parameter)');
-    }
-
-    if (lastLoadedKey) { tryDuplicateCheck(); }
-  }catch(e){ console.warn(e); }
-});
-
-/* ============== Mint Button (passt sich ABI an) ============== */
-mintBtn.addEventListener('click', async ()=>{
-  try{
-    if(!nftImageData){ alert('Generate first.'); return; }
-    await ensureWallet(); await ensureBaseSepolia();
-
-    // Bild hochskalieren & erzeugen
-    const SIZE=1600, scale=SIZE/600;
-    const t=document.createElement('canvas'); t.width=SIZE; t.height=SIZE;
-    const tc=t.getContext('2d');
-    tc.fillStyle=bgPastelHex; tc.fillRect(0,0,SIZE,SIZE);
-    createBrushPatterns(tc);
-    const colors = getCharacterPriorityColors(nftImageData, 15);
-    const rng = mulberry32(currentSeed);
-    chaosFragment(colors, +sequenceRange.value, +driftRange.value, tc, SIZE, scale, rng);
-    addNoise(tc, SIZE);
-
-    const imgBlob = await new Promise((resolve, reject) => {
-      t.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.92);
-    });
-    const imageFile = { name:'visual-art.jpg', blob:imgBlob };
-
-    const [slug, sourceCollectionRaw, sourceTokenIdStr] = (lastLoadedKey || '').split('|');
-    const sourceCollection = (sourceCollectionRaw || '').trim();
-    const sourceTokenId = BigInt(sourceTokenIdStr || '0');
-
-    const metadata = {
-      name: `N-LABS95 — ${slug || 'Artwork'} #${sourceTokenId}`,
-      description: "Experimental visual minted on Base.",
-      image: "ipfs://TBD",
-      attributes:[
-        { trait_type:"Collection", value: slug || "n/a" },
-        { trait_type:"DNA Frequency", value:+sequenceRange.value },
-        { trait_type:"Gene Flow", value:+driftRange.value },
-        { trait_type:"Source Token", value: String(sourceTokenId) }
-      ]
-    };
-
-    statusText.textContent='Uploading to IPFS…';
-    let result;
-    if(UPLOAD_MODE==="server"){
-      const metaText = JSON.stringify(metadata, null, 2);
-      result = await uploadViaServer([
-        imageFile,
-        { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
-      ]);
-    }else{
-      const imgOnly = await uploadViaWeb3Storage([imageFile, {name:'meta-dummy.json', text:'{}', blob:new Blob()}]);
-      metadata.image = imgOnly.imageUrl;
-      const metaText = JSON.stringify(metadata, null, 2);
-      result = await uploadViaWeb3Storage([
-        imageFile,
-        { name:'metadata.json', text:metaText, blob:new Blob([metaText],{type:'application/json'}) }
-      ]);
-    }
-    const tokenURI = result.metadataUrl || result.metadataUrl_patched;
-    if(!tokenURI) throw new Error('No metadata URL from uploader');
-
-    const CONTRACT = getContract();
-
-    // Falls der Contract die Source-Logik NICHT hat: kein Duplicate-Check, und 1-Param-Mint
-    if (!SUPPORTS_SOURCE) {
-      const value = ethers.parseEther(MINT_PRICE_ETH); // ACHTUNG: Falls dein Contract einen Preis > 0 hat → hier den richtigen Wert setzen!
-      const tx = await CONTRACT['mint(string)'](tokenURI, { value });
-      statusText.textContent = `Minting… Tx: ${tx.hash}`;
-      const receipt = await tx.wait();
-      lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
-      statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
-      mintBtn.disabled=true;
-      shareBar.style.display = 'flex';
-      return;
-    }
-
-    // Extended Modus: Duplicate-Check + 3-Param-Mint
-    const already = await CONTRACT.hasBeenUsed(sourceCollection, sourceTokenId);
-    if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
-
-    const value = ethers.parseEther(MINT_PRICE_ETH);
-    const tx = await CONTRACT['mint(string,address,uint256)'](tokenURI, sourceCollection, sourceTokenId, { value });
-    statusText.textContent = `Minting… Tx: ${tx.hash}`;
-    const receipt = await tx.wait();
-    lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
-    statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
-    mintBtn.disabled=true;
-    shareBar.style.display = 'flex';
-
-  }catch(err){
-    console.error(err);
-    // Versuche Revert-Reason sichtbar zu machen
-    const msg = err?.info?.error?.message || err?.reason || err?.shortMessage || err?.message || String(err);
-    statusText.textContent = `❌ Mint failed: ${msg}`;
-  }
-});
-</script>
-
-/* ============== Load NFT Button ============== */
+/* ============== LOAD NFT ============== */
 loadBtn.addEventListener('click', async ()=>{
   const [slug,sourceCollectionAddrRaw] = (collectionSelect.value || '').split('|');
   const sourceCollectionAddr = (sourceCollectionAddrRaw || '').trim();
@@ -678,13 +555,13 @@ loadBtn.addEventListener('click', async ()=>{
     generateBtn.disabled=false; mintBtn.disabled=true;
     lastLoadedKey = `${slug}|${sourceCollectionAddr}|${tokenId}`;
 
-    if (signer) { tryDuplicateCheck(); }
+    if (CAPABILITIES.hasBeenUsed) { tryDuplicateCheck(); }
   };
   img.onerror = ()=>{ statusText.textContent='Failed to load image.'; nftBadge.textContent='No NFT loaded'; };
   img.src = url;
 });
 
-/* ============== Generate ============== */
+/* ============== GENERATE ============== */
 generateBtn.addEventListener('click', ()=>{
   if(!nftImageData){ alert('Load an NFT first.'); return; }
   ctx.fillStyle = bgPastelHex; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -732,11 +609,12 @@ async function uploadViaWeb3Storage(files){
   return { imageCid, imageUrl, metadataCid, metadataUrl };
 }
 
-/* ============== Mint Button & Share ============== */
+/* ============== MINT + Share ============== */
 mintBtn.addEventListener('click', async ()=>{
   try{
     if(!nftImageData){ alert('Generate first.'); return; }
     await ensureWallet(); await ensureBaseSepolia();
+    await detectContractCapabilities();
 
     // High-res Render (JPEG 1600x1600)
     const SIZE=1600, scale=SIZE/600;
@@ -756,15 +634,14 @@ mintBtn.addEventListener('click', async ()=>{
 
     const [slug, sourceCollectionRaw, sourceTokenIdStr] = (lastLoadedKey || '').split('|');
     const sourceCollection = (sourceCollectionRaw || '').trim();
-    if (!ADDRESS_RE.test(sourceCollection)) throw new Error('Invalid collection address');
-    const sourceTokenId = BigInt(sourceTokenIdStr || '0');
+    const sourceTokenId = BigInt((sourceTokenIdStr || '0').trim());
 
     const metadata = {
       name: `N-LABS95 — ${slug} #${sourceTokenId}`,
       description: "Experimental visual minted on Base.",
       image: "ipfs://TBD",
       attributes:[
-        { trait_type:"Collection", value: slug },
+        { trait_type:"Collection", value: slug || "Unknown" },
         { trait_type:"DNA Frequency", value:+sequenceRange.value },
         { trait_type:"Gene Flow", value:+driftRange.value },
         { trait_type:"Source Token", value: String(sourceTokenId) }
@@ -794,25 +671,36 @@ mintBtn.addEventListener('click', async ()=>{
     const imageIpfs = result.imageUrl || null;
     lastImageGateway = imageIpfs ? ipfsToHttp(imageIpfs) : null;
 
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    const already = await contract.hasBeenUsed(sourceCollection, sourceTokenId);
-    if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
-
     const value = ethers.parseEther(MINT_PRICE_ETH);
-    const tx = await contract.mint(tokenURI, sourceCollection, sourceTokenId, { value });
-    statusText.textContent = `Minting… Tx: ${tx.hash}`;
-    const receipt = await tx.wait();
 
-    lastTxHash = tx.hash;
+    let tx, receipt;
+    if (CAPABILITIES.extended && ADDRESS_RE.test(sourceCollection)) {
+      const c = new ethers.Contract(CONTRACT_ADDRESS, ABI_EXTENDED, signer);
+      // Optional Duplicate-Check vor dem Senden
+      try{
+        const already = await c.hasBeenUsed(sourceCollection, sourceTokenId);
+        if (already) { statusText.textContent = '⚠️ Already minted.'; mintBtn.disabled = true; return; }
+      }catch{}
+      tx = await c.mint(tokenURI, sourceCollection, sourceTokenId, { value });
+    } else {
+      const c = new ethers.Contract(CONTRACT_ADDRESS, ABI_SIMPLE, signer);
+      tx = await c.mint(tokenURI, { value });
+    }
+
+    statusText.textContent = `Minting… Tx: ${tx.hash}`;
+    receipt = await tx.wait();
+
     lastExplorerTx = `${EXPLORER.replace(/\/$/,'')}/tx/${tx.hash}`;
     statusText.textContent = `✅ Minted in block ${receipt.blockNumber}. View: ${lastExplorerTx}`;
     mintBtn.disabled=true;
-
     shareBar.style.display = 'flex';
 
   }catch(err){
-    console.error(err);
-    statusText.textContent = `❌ Mint failed: ${err?.info?.error?.message || err?.shortMessage || err?.message || String(err)}`;
+    console.error('Mint error raw:', err);
+    let msg = err?.info?.error?.message || err?.shortMessage || err?.message || String(err);
+    // tiefer graben
+    if (err?.info?.error?.data?.message) msg += ` | ${err.info.error.data.message}`;
+    statusText.textContent = `❌ Mint failed: ${msg}`;
   }
 });
 
@@ -853,29 +741,19 @@ btnCopy.addEventListener('click', async ()=>{
   }
 });
 
-/* ============== ABOUT — Retro DNA animation ============== */
+/* ============== ABOUT — Retro helix animation ============== */
 const aboutCanvas = document.getElementById('aboutCanvas');
 const actx = aboutCanvas.getContext('2d');
 
-/* Tunables */
 let ABOUT_RUNNING = true;
 let COLOR_BOOST = 1.0;
-const STRAND_COUNT = 2;            // left/right helix
-const POINTS_PER_STRAND = 140;     // vertical resolution
-const BASE_AMPLITUDE = 110;        // horizontal spread
-const SPEED = 0.012;               // base speed
-const HUE_BASE = 180;              // base hue
-const HUE_SPREAD = 140;            // hue variance
+const STRAND_COUNT = 2;
+const POINTS_PER_STRAND = 140;
+const BASE_AMPLITUDE = 110;
+const SPEED = 0.012;
+const HUE_BASE = 180;
+const HUE_SPREAD = 140;
 const GLOW = true;
-
-function resizeAbout(){
-  // keep a nice retro aspect; height fixed by attribute, width responsive via CSS
-  const r = aboutCanvas.getBoundingClientRect();
-  const scale = Math.max(1, Math.floor((r.width / aboutCanvas.width) * window.devicePixelRatio));
-  // no dynamic pixel ratio changes here to avoid blur; canvas size fixed via attributes
-}
-window.addEventListener('resize', resizeAbout);
-resizeAbout();
 
 let t0 = 0;
 function drawAbout(ts){
@@ -885,7 +763,7 @@ function drawAbout(ts){
 
   actx.clearRect(0,0,aboutCanvas.width,aboutCanvas.height);
 
-  // subtle grid / scope
+  // grid
   actx.save();
   actx.globalAlpha = 0.08;
   actx.strokeStyle = '#1bff6a';
@@ -900,7 +778,7 @@ function drawAbout(ts){
 
   // strands
   for(let s=0; s<STRAND_COUNT; s++){
-    const phase = s===0 ? 0 : Math.PI; // opposite phase
+    const phase = s===0 ? 0 : Math.PI;
     for(let i=0;i<POINTS_PER_STRAND;i++){
       const v = i/(POINTS_PER_STRAND-1);
       const y = 20 + v*(aboutCanvas.height-40);
@@ -926,7 +804,6 @@ function drawAbout(ts){
       actx.arc(x, y, 2.2 + Math.sin(v*10 + t*3 + s)*1.0, 0, Math.PI*2);
       actx.fill();
 
-      // cross-links (ladder rungs)
       if(i % 7 === 0){
         const otherX = xCenter + Math.sin(v*Math.PI*2 + t*2 + (s===0?Math.PI:0)) * amp;
         actx.beginPath();
@@ -939,7 +816,7 @@ function drawAbout(ts){
     }
   }
 
-  // scanlines overlay (extra)
+  // scanlines
   actx.save();
   actx.globalAlpha = 0.08;
   actx.fillStyle = '#00ff66';
@@ -964,7 +841,7 @@ document.getElementById('aboutResetBtn').addEventListener('click', ()=>{
   if(!ABOUT_RUNNING){ ABOUT_RUNNING = true; requestAnimationFrame(drawAbout); }
 });
 
-/* Boot screen on Mint canvas */
+/* Boot screen auf Mint-Canvas */
 (function boot(){
   ctx.fillStyle='#f8f8f8'; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle='#000'; ctx.font='14px MS Sans Serif';
@@ -973,5 +850,3 @@ document.getElementById('aboutResetBtn').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
-
-
